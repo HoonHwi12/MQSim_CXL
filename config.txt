@@ -1,4 +1,4 @@
-DRAM_mode 0
+DRAM_mode 1
 Has_cache 1
 DRAM_size 67108864
 Mix_mode 1
@@ -7,4 +7,5 @@ Has_mshr 1
 Cache_placement 16
 Cache_policy CFLRU
 Prefetcher Best-offset
-Total_number_of_requests 60714660
+#Total_number_of_requests 13357226
+Total_number_of_requests 971400

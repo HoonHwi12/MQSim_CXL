@@ -54,7 +54,7 @@ namespace SSD_Components {
 
 		bool falsehit{ 0 };
 		auto it{ ((*list_of_current_access)[Simulator->Time()]).begin() };
-
+		
 		while (it != ((*list_of_current_access)[Simulator->Time()]).end()) {
 
 			if (eventype == (*it)->type) {
@@ -69,7 +69,6 @@ namespace SSD_Components {
 		}
 		num_working_request--;
 		
-
 		switch (eventype) {
 		case CXL_DRAM_EVENTS::CACHE_HIT:
 			number_of_accesses++;
@@ -117,6 +116,8 @@ namespace SSD_Components {
 			delete current_access;
 			break;
 		case CXL_DRAM_EVENTS::PREFETCH_READY:
+			//* added hoon
+			number_of_accesses++;
 			//flash_read_count++;
 			//outputf.of << "Finished_time " << Simulator->Time() << " Starting_time " << current_access->initiate_time << " Prefetch_ready_at " << current_access->lba << std::endl;
 			prefetch_amount++;
@@ -189,15 +190,16 @@ namespace SSD_Components {
 				std::cout << " ";
 			}
 
-			std::cout << "] " << perc << "%   Cache Hit Count: " << cache_hit_count << "   Prefetch amount: "<< prefetch_amount << endl;
+			std::cout << "] " << perc << "%   Cache Hit Count: " << cache_hit_count << "   Prefetch amount: "<< prefetch_amount << "   number_of_accesses: " << number_of_accesses<< "  total_number_of_requests: " << total_number_of_requests << endl;
 		}
-
 		if (number_of_accesses == total_number_of_requests && !results_printed) {
 			results_printed = 1;
 			std::cout << "Simulation progress: [";
 			for (auto i = 0; i < 25; i++) {
 				std::cout << "=";
 			}
+			of_overall<< "number_of_accesses : " << number_of_accesses << "    total_number_of_requests: " << total_number_of_requests << std::endl;
+
 			std::cout << "] " << 100 << "%    Cache Hit Count: " << cache_hit_count << "   Prefetch amount: " << prefetch_amount << std::endl;
 			of_overall<< "Cache Hit Count: " << cache_hit_count << "   Prefetch amount: " << prefetch_amount << std::endl;
 			std::cout << "Hit under miss count: " << cache_hum_count << endl;

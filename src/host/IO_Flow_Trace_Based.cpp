@@ -3,7 +3,138 @@
 #include "ASCII_Trace_Definition.h"
 #include "../utils/DistributionTypes.h"
 
+// * hoonhwi
+int testbit = 0;
+PageTable::PageTable() {}
+PageTable pagetable;
+BufferCache::BufferCache() {}
+BufferCache buffercache;
+void PageTable::updateLRU(size_t index) {
+    auto it = std::remove(lruQueue.begin(), lruQueue.end(), index);
+    lruQueue.erase(it, lruQueue.end());
+    lruQueue.push_back(index);
+}
+int64_t PageTable::translate_pageTable(size_t virtualAddress) {
+	size_t virtualPageNumber = virtualAddress; // / PAGE_SIZE;
+	size_t offset = 0; // virtualAddress % PAGE_SIZE;
 
+	size_t index = 0;
+	while(index < pageTable.size())
+	{
+		if(pageTable[index].valid && pageTable[index].virtualPageNumber == virtualPageNumber)
+		{
+			updateLRU(index);
+			return pageTable[index].frameNumber + offset; // pageTable[index].frameNumber * PAGE_SIZE + offset;
+		}
+		index++;
+	}
+	return -1;
+}
+void PageTable::map_pageTable(size_t virtualPageNumber, size_t physicalFrameNumber) {
+ 	for (size_t i = 0; i < pageTable.size(); ++i) {
+        if (pageTable[i].virtualPageNumber == virtualPageNumber) {
+            pageTable[i].frameNumber = physicalFrameNumber;
+            pageTable[i].valid = true;
+            updateLRU(i);
+            return;
+        }
+    }
+	if (pageTable.size() >= MAX_PAGE_TABLE_SIZE) {
+        size_t lruIndex = lruQueue.front();
+		// PRINT_MESSAGE("lru pop front: " << lruQueue[0]);
+        lruQueue.pop_front();
+        pageTable[lruIndex] = { virtualPageNumber, physicalFrameNumber, true };
+        updateLRU(lruIndex);
+    } else {
+		// PRINT_MESSAGE("pageTable size: " << pageTable.size());
+        pageTable.push_back({ virtualPageNumber, physicalFrameNumber, true });
+        updateLRU(pageTable.size() - 1);
+    }
+}
+void PageTable::unmap_pageTable(size_t virtualPageNumber) {
+    for (auto& entry : pageTable) {
+        if (entry.virtualPageNumber == virtualPageNumber) {
+            entry.valid = false;
+            return;
+        }
+    }
+}
+void BufferCache::updateLRU(size_t index) {
+    auto it = std::remove(lruQueue.begin(), lruQueue.end(), index);
+    lruQueue.erase(it, lruQueue.end());
+    lruQueue.push_back(index);
+}
+BufferCacheEntry BufferCache::translate_bufferCache(Host_Components::Host_IO_Request request) {
+	size_t index = 0;
+	BufferCacheEntry temp_req{0};
+	temp_req.valid = false;
+	while(index < bufferCache.size())
+	{
+		if(bufferCache[index].valid && bufferCache[index].IO_queue_info == request.IO_queue_info)
+		{
+			return bufferCache[index]; // pageTable[index].frameNumber * PAGE_SIZE + offset;
+		}
+		index++;
+	}
+	return temp_req;
+}
+BufferCacheEntry BufferCache::update_dirty(Host_Components::Host_IO_Request request) {
+	size_t index = 0;
+	BufferCacheEntry temp_req{0};
+	temp_req.valid = false;
+	while(index < bufferCache.size())
+	{
+		if(bufferCache[index].valid && bufferCache[index].Start_LBA == request.Start_LBA && bufferCache[index].LBA_count == request.LBA_count)
+		{
+			bufferCache[index].Arrival_time = request.Arrival_time;
+			bufferCache[index].Enqueue_time = request.Enqueue_time;
+			bufferCache[index].IO_queue_info = request.IO_queue_info;
+			bufferCache[index].LBA_count = request.LBA_count;
+			bufferCache[index].Type = (Host_IO_Request_Type)request.Type;
+			bufferCache[index].Source_flow_id = request.Source_flow_id;
+			bufferCache[index].Start_LBA = request.Start_LBA;
+            bufferCache[index].valid = true;
+			return bufferCache[index];
+		}
+		index++;
+	}
+	return temp_req;
+}
+BufferCacheEntry BufferCache::select_one()
+{
+	BufferCacheEntry temp_req{0};
+	temp_req.valid = false;
+	if (!bufferCache.empty() && bufferCache.back().valid) {
+        temp_req = bufferCache.back();
+		bufferCache.pop_back();
+		return temp_req;
+    }
+	return temp_req;
+}
+bool BufferCache::empty() {
+	return bufferCache.empty();
+}
+void BufferCache::map_bufferCache(Host_Components::Host_IO_Request request) {
+	BufferCacheEntry temp_req{0};
+	temp_req.Arrival_time = request.Arrival_time;
+	temp_req.Enqueue_time = request.Enqueue_time;
+	temp_req.IO_queue_info = request.IO_queue_info;
+	temp_req.LBA_count = request.LBA_count;
+	temp_req.Source_flow_id = request.Source_flow_id;
+	temp_req.Start_LBA = request.Start_LBA;
+	temp_req.Type = (Host_IO_Request_Type)request.Type;
+	temp_req.valid = true;
+	bufferCache.push_back(temp_req);
+}
+void BufferCache::unmap_bufferCache(Host_Components::Host_IO_Request request) {
+    for (auto& entry : bufferCache) {
+        if (entry.IO_queue_info == request.IO_queue_info) {
+            entry.valid = false;
+            return;
+        }
+    }
+}
+// *
 
 uint64_t skipped_feeding{ 0 };
 
@@ -48,7 +179,10 @@ namespace Host_Components
 		char* pEnd;
 		request->LBA_count = std::strtoul(current_trace_line[ASCIITraceSizeColumn].c_str(), &pEnd, 0);
 		if (need_to_divide == true){
-			request->LBA_count /= 512;
+			//* hoonhwi
+			//request->LBA_count /= 512;
+			request->LBA_count /= 4096;
+			// *
 		} 
 		
 		request->Start_LBA = std::strtoull(current_trace_line[ASCIITraceAddressColumn].c_str(), &pEnd, 0);
@@ -135,7 +269,7 @@ namespace Host_Components
 		// ignore first 3 lines
 		std::getline(trace_file, trace_line);
 		std::getline(trace_file, trace_line);
-		std::getline(trace_file, trace_line);
+			std::getline(trace_file, trace_line);
 #endif	
 
 		sim_time_type last_request_arrival_time = 0;
@@ -189,7 +323,6 @@ namespace Host_Components
 
 	void IO_Flow_Trace_Based::Execute_simulator_event(MQSimEngine::Sim_Event*)
 	{
-
 		//if (Simulator->Time() >= 243230814) {
 		//	cout << "Check" << Simulator->Time() << endl;
 		//}
@@ -200,14 +333,84 @@ namespace Host_Components
 		}
 		Host_IO_Request* request = Generate_next_request();
 		if (request != NULL) {
-			//Submit_io_request(request);
-			cxl_pcie->requests_queue.push_back(request);
-			sim_time_type firetime{ 0 };
-			firetime = (request->Arrival_time < Simulator->Time()) ? Simulator->Time() : request->Arrival_time;
-			Simulator->Register_sim_event(firetime, cxl_pcie, 0, 0);
+			//* hoonhwi
+			if(request->Type == Host_IO_Request_Type::READ)
+			{
+				if(PAGE_TABLE_ON && pagetable.translate_pageTable(request->Start_LBA) >= 0) // page hit
+				{
+					PRINT_MESSAGE("page hit Address: " << request->Start_LBA);
+					global_io_flow_base->STAT_PAGE_CACHE_HIT++;
+				}
+				else
+				{
+					// PRINT_MESSAGE("page fault Address: " << request->Start_LBA);
+					if(PAGE_TABLE_ON) pagetable.map_pageTable(request->Start_LBA, request->Start_LBA); // add to pagetable, address need to be fixed
+
+					//Submit_io_request(request);
+					cxl_pcie->requests_queue.push_back(request);
+					sim_time_type firetime{ 0 };
+					firetime = (request->Arrival_time < Simulator->Time()) ? Simulator->Time() : request->Arrival_time;
+					Simulator->Register_sim_event(firetime, cxl_pcie, 0, 0);
+				}
+			}
+			else if(request->Type == Host_IO_Request_Type::WRITE)
+			{
+				if(PAGE_TABLE_ON && buffercache.update_dirty(*request).valid) // write buffer hit
+				{
+					PRINT_MESSAGE("update dirty buffer cache");
+				}
+				else
+				{
+					if(PAGE_TABLE_ON)
+					{
+						// PRINT_MESSAGE("write buffer miss ");
+						buffercache.map_bufferCache(*request); // write buffer miss, address need to be fixed
+						global_io_flow_base->STAT_BUFFER_CACHE_MAP++;
+						cxl_pcie->write_buffer_cnt++;
+
+						if(cxl_pcie->write_buffer_cnt >= MAX_BUFFER_CACHE_SIZE)
+						{
+							// PRINT_MESSAGE("sync, write_buffer_cnt: " << cxl_pcie->write_buffer_cnt);
+							BufferCacheEntry temp_cache;
+							uint16_t i = 0;
+							while(!buffercache.empty())
+							{
+								Host_IO_Request* temp_request = new Host_IO_Request;;
+								temp_cache = buffercache.select_one();
+								temp_request->Arrival_time = Simulator->Time();
+								temp_request->Enqueue_time = Simulator->Time();
+								temp_request->IO_queue_info = temp_cache.IO_queue_info;
+								temp_request->LBA_count = temp_cache.LBA_count;
+								temp_request->Type = (Host_IO_Request_Type)temp_cache.Type;
+								temp_request->Source_flow_id = temp_cache.Source_flow_id;
+								temp_request->Start_LBA = temp_cache.Start_LBA;
+
+								//Submit_io_request(request);
+								cxl_pcie->requests_queue.push_back(temp_request);
+								sim_time_type firetime{ 0 };
+								firetime = (temp_request->Arrival_time < Simulator->Time()) ? Simulator->Time() : temp_request->Arrival_time;
+								firetime += i; // fire time is key index
+								i++;
+								
+								Simulator->Register_sim_event(firetime, cxl_pcie, 0, 0);
+								cxl_pcie->write_buffer_cnt--;
+							}
+							// PRINT_MESSAGE("sync complete: " << cxl_pcie->write_buffer_cnt);
+							testbit = 1;
+						}
+					}
+					else
+					{
+						cxl_pcie->requests_queue.push_back(request);
+						sim_time_type firetime{ 0 };
+						firetime = (request->Arrival_time < Simulator->Time()) ? Simulator->Time() : request->Arrival_time;
+						Simulator->Register_sim_event(firetime, cxl_pcie, 0, 0);
+					}
+				}	
+			}
+			// *
 		}
 		
-
 		if (STAT_generated_request_count < total_requests_to_be_generated) {
 			std::string trace_line;
 			if (std::getline(trace_file, trace_line)) {
@@ -235,11 +438,9 @@ namespace Host_Components
 			sim_time_type firetime{ 0 };
 			firetime = (std::strtoll(current_trace_line[ASCIITraceTimeColumn].c_str(), &pEnd, 10) < Simulator->Time()) ? Simulator->Time() : std::strtoll(current_trace_line[ASCIITraceTimeColumn].c_str(), &pEnd, 10);
 			//Simulator->Register_sim_event(time_offset + std::strtoll(current_trace_line[ASCIITraceTimeColumn].c_str(), &pEnd, 10), this);
-			Simulator->Register_sim_event(time_offset + firetime, this);
-			
+			Simulator->Register_sim_event(time_offset + firetime, this);			
 #endif
 		}
-
 	}
 
 	void IO_Flow_Trace_Based::Get_statistics(Utils::Workload_Statistics& stats, LPA_type(*Convert_host_logical_address_to_device_address)(LHA_type lha),

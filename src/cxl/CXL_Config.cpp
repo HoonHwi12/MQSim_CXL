@@ -139,7 +139,7 @@ void cxl_config::readConfigFile() {
 
 			configfile >> value;
 
-			total_number_of_requets = value;
+			total_number_of_requets = value;	
 		}
 
 	}

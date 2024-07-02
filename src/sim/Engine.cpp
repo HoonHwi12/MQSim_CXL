@@ -2,6 +2,10 @@
 #include "Engine.h"
 #include "../utils/Logical_Address_Partitioning_Unit.h"
 
+// * hoonhwi
+#include "IO_Flow_Base.h"
+// *
+
 namespace MQSimEngine
 {
 	Engine* Engine::_instance = NULL;
@@ -78,6 +82,7 @@ namespace MQSimEngine
 		}
 		
 		Sim_Event* ev = NULL;
+
 		while (true) {
 			if (_EventList->Count == 0 || stop) {
 				//std::cout << " check" << std::endl;

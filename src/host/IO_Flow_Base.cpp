@@ -7,6 +7,10 @@
 
 namespace Host_Components
 {
+	// * hoonhwi
+	IO_Flow_Base* global_io_flow_base = nullptr;
+	// *
+
 	//unsigned int InputStreamBase::lastId = 0;
 	IO_Flow_Base::IO_Flow_Base(const sim_object_id_type& name, uint16_t flow_id, LHA_type start_lsa_on_device, LHA_type end_lsa_on_device, uint16_t io_queue_id,
 		uint16_t nvme_submission_queue_size, uint16_t nvme_completion_queue_size, 
@@ -15,6 +19,7 @@ namespace Host_Components
 		bool enabled_logging, sim_time_type logging_period, std::string logging_file_path) : 
 		MQSimEngine::Sim_Object(name), flow_id(flow_id), start_lsa_on_device(start_lsa_on_device), end_lsa_on_device(end_lsa_on_device), io_queue_id(io_queue_id),
 		priority_class(priority_class), stop_time(stop_time), initial_occupancy_ratio(initial_occupancy_ratio), total_requests_to_be_generated(total_requets_to_be_generated), SSD_device_type(SSD_device_type), pcie_root_complex(pcie_root_complex), sata_hba(sata_hba),
+		STAT_BUFFER_CACHE_MAP(0), STAT_PAGE_CACHE_HIT(0),
 		STAT_generated_request_count(0), STAT_generated_read_request_count(0), STAT_generated_write_request_count(0),
 		STAT_ignored_request_count(0),
 		STAT_serviced_request_count(0), STAT_serviced_read_request_count(0), STAT_serviced_write_request_count(0),
@@ -27,6 +32,10 @@ namespace Host_Components
 		STAT_transferred_bytes_total(0), STAT_transferred_bytes_read(0), STAT_transferred_bytes_write(0), progress(0), next_progress_step(0),
 		enabled_logging(enabled_logging), logging_period(logging_period), logging_file_path(logging_file_path)
 	{
+		// * hoonhwi
+		global_io_flow_base  = this;
+		// *
+
 		Host_IO_Request* t= NULL;
 
 		switch (SSD_device_type) {
@@ -121,6 +130,12 @@ namespace Host_Components
 				delete req;
 			}
 		}
+
+		 // * hoonhwi
+		if (global_io_flow_base == this) {
+        	global_io_flow_base = nullptr;
+    	}
+		// *
 
 		switch (SSD_device_type) {
 			case HostInterface_Types::NVME:
@@ -294,7 +309,6 @@ namespace Host_Components
 				STAT_min_request_delay_read = request_delay;
 			}
 			STAT_transferred_bytes_read += request->LBA_count * SECTOR_SIZE_IN_BYTE;
-
 
 #if LOG_USER_READ
 			read_log_file << (Simulator->Time() / SIM_TIME_TO_MICROSECONDS_COEFF) << "  " << (request_delay / SIM_TIME_TO_MICROSECONDS_COEFF) << "  " << request->LBA_count << " " << request->Start_LBA << " " << request->Arrival_time << " " << request->Enqueue_time << std::endl;
@@ -541,6 +555,16 @@ namespace Host_Components
 		std::string attr = "Name";
 		std::string val = ID();
 		xmlwriter.Write_attribute_string(attr, val);
+
+		// * hoonhwi
+		attr = "BUFFER_CACHE_MAP";
+		val = std::to_string((double)STAT_BUFFER_CACHE_MAP);
+		xmlwriter.Write_attribute_string(attr, val);
+
+		attr = "PAGE_CACHE_HIT";
+		val = std::to_string((double)STAT_PAGE_CACHE_HIT);
+		xmlwriter.Write_attribute_string(attr, val);
+		// *
 
 		attr = "Request_Count";
 		val = std::to_string(STAT_generated_request_count);

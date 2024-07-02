@@ -5,6 +5,10 @@
 
 using namespace std;
 
+// * hoonhwi
+#include "IO_Flow_Base.h"
+// *
+
 typedef enum class cachepolicy {
 	random,
 	lru2,

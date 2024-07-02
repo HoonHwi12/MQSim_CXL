@@ -57,6 +57,10 @@ namespace Host_Components {
 		std::list<Host_IO_Request*> requests_queue;
 
 		uint64_t skipped_trace_reading{ 0 };
+
+		//* hoonhwi
+		uint64_t write_buffer_cnt{ 0 };
+		// *
 		
 	private:
 		PCIe_Switch* pcie_switch{NULL};

@@ -305,9 +305,9 @@ int main(int argc, char* argv[])
 		PRINT_MESSAGE("Writing results to output file .......");
 		collect_results(ssd, host, (workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of(".")) + "_scenario_" + std::to_string(cntr) + ".xml").c_str());
 	}
-    cout << "Simulation complete; Press any key to exit." << endl;
-
-	cin.get(); // Disable if you prefer batch runs
+	cout << "Simulation complete;" << endl;
+    //cout << "Simulation complete; Press any key to exit." << endl;
+	//cin.get(); // Disable if you prefer batch runs
 
 	return 0;
 }

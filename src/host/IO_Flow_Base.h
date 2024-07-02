@@ -72,7 +72,6 @@ namespace Host_Components
 		uint16_t flow_id;
 		double initial_occupancy_ratio;//The initial amount of valid logical pages when pereconditioning is performed
 		sim_time_type stop_time;//The flow stops generating request when simulation time reaches stop_time
-		unsigned int total_requests_to_be_generated;//If stop_time is zero, then the flow stops generating request when the number of generated requests is equal to total_req_count
 		HostInterface_Types SSD_device_type;
 		PCIe_Root_Complex* pcie_root_complex;
 		SATA_HBA* sata_hba;
@@ -92,7 +91,14 @@ namespace Host_Components
 		std::unordered_map<sim_time_type, Host_IO_Request*> nvme_software_request_queue;//The I/O requests that are enqueued in the I/O queue of the SSD device
 		void NVMe_update_and_submit_completion_queue_tail();
 
+	// * hoonhwi
+	public:
+	// *
+		unsigned int total_requests_to_be_generated;//If stop_time is zero, then the flow stops generating request when the number of generated requests is equal to total_req_count
 		//Variables used to collect statistics
+		uint64_t STAT_BUFFER_CACHE_MAP;
+		uint64_t STAT_PAGE_CACHE_HIT;
+
 		unsigned int STAT_generated_request_count_before_PRECOND; //DATE22
 		unsigned int STAT_generated_request_count_before_GC; //DATE22
 		unsigned int STAT_generated_request_count_before_GC_r; //DATE22
@@ -125,6 +131,9 @@ namespace Host_Components
 		unsigned int STAT_serviced_request_count_short_term;
 
 	};
+	// * hoonhwi
+	extern IO_Flow_Base* global_io_flow_base;
+	// *
 }
 
 #endif // !IO_FLOW_BASE_H

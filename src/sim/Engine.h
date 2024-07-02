@@ -24,6 +24,10 @@ namespace MQSimEngine {
 			delete _EventList;
 		}
 		
+		size_t getEventCount() {
+			return _EventList->Count;
+		}
+
 		static Engine* Instance();
 		sim_time_type Time();
 		Sim_Event* Register_sim_event(sim_time_type fireTime, Sim_Object* targetObject, void* parameters = NULL, int type = 0);

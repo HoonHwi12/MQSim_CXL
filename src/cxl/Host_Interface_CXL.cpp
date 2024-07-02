@@ -267,7 +267,6 @@ namespace SSD_Components
 
 
 	bool CXL_Manager::process_requests(uint64_t address, void* payload, bool is_pref_req) {
-
 		bool cache_miss{ 1 };
 
 		Submission_Queue_Entry* sqe = (Submission_Queue_Entry*)payload;

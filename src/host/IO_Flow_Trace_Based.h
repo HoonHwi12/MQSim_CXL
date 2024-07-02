@@ -8,6 +8,10 @@
 #include "ASCII_Trace_Definition.h"
 #include "../cxl/CXL_PCIe.h"
 
+// * hoonhwi
+#include "Host_Buffer_Cache.h"
+// *
+
 namespace Host_Components
 {
 	class IO_Flow_Trace_Based : public IO_Flow_Base

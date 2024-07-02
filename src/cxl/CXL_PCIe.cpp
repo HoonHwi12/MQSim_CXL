@@ -1,10 +1,13 @@
 #include "CXL_PCIe.h"
 #include <fstream>;
 
+// *hoonhwi
+#include "IO_Flow_Base.h"
+// *
+
 ofstream ofsus_mshr { "./Results/device_stall_time_mshr.txt" };
 ofstream ofsus_flash{ "./Results/device_stall_time_flash.txt" };
 //ofstream ofsus_dram{ "./Results/device_stall_time_dram.txt" };
-
 //ofstream ofsus_dram{ "device_suspend_time_dram.txt" };
 
 uint64_t SUS_START_TIME_MSHR{ 0 }, SUS_START_TIME_FLASH{ 0 }, SUS_START_TIME_DRAM{ 0 };
@@ -27,7 +30,6 @@ namespace Host_Components {
 
 	void CXL_PCIe::Validate_simulation_config() {}
 	void CXL_PCIe::Execute_simulator_event(MQSimEngine::Sim_Event* event) {
-
 		if (mshr_full || !device_dram_avail || !flash_device_avail) {
 			skipped_requests++;
 			return;
@@ -49,9 +51,7 @@ namespace Host_Components {
 
 		Host_IO_Request* io_request{ requests_queue.front()};
 		requests_queue.pop_front();
-
 		PCIe_Message* message{ new PCIe_Message };
-
 		
 		message->Destination = PCIe_Destination_Type::DEVICE;
 		message->Type = PCIe_Message_Type::READ_COMP;
@@ -69,12 +69,69 @@ namespace Host_Components {
 		message->Payload = sqe;
 		message->Payload_size = sizeof(Submission_Queue_Entry);
 
+		// * hoonhwi
+		sim_time_type device_response_time = Simulator->Time() - io_request->Enqueue_time;
+		sim_time_type request_delay = Simulator->Time() - io_request->Arrival_time;		
+		global_io_flow_base->STAT_serviced_request_count++;
+		global_io_flow_base->STAT_serviced_request_count_short_term++;
+		global_io_flow_base->STAT_sum_device_response_time += device_response_time;
+		global_io_flow_base->STAT_sum_device_response_time_short_term += device_response_time;
+		global_io_flow_base->STAT_sum_request_delay += request_delay;
+		global_io_flow_base->STAT_sum_request_delay_short_term += request_delay;
+		if (device_response_time > global_io_flow_base->STAT_max_device_response_time) {
+			global_io_flow_base->STAT_max_device_response_time = device_response_time;
+		}
+		if (device_response_time < global_io_flow_base->STAT_min_device_response_time) {
+			global_io_flow_base->STAT_min_device_response_time = device_response_time;
+		}
+		if (request_delay > global_io_flow_base->STAT_max_request_delay) {
+			global_io_flow_base->STAT_max_request_delay = request_delay;
+		}
+		if (request_delay < global_io_flow_base->STAT_min_request_delay) {
+			global_io_flow_base->STAT_min_request_delay = request_delay;
+		}
+		global_io_flow_base->STAT_transferred_bytes_total += io_request->LBA_count * SECTOR_SIZE_IN_BYTE;
+		if (io_request->Type == Host_IO_Request_Type::READ) {
+			global_io_flow_base->STAT_serviced_read_request_count++;
+			global_io_flow_base->STAT_sum_device_response_time_read += device_response_time;
+			global_io_flow_base->STAT_sum_request_delay_read += request_delay;
+			if (device_response_time > global_io_flow_base->STAT_max_device_response_time_read) {
+				global_io_flow_base->STAT_max_device_response_time_read = device_response_time;
+			}
+			if (device_response_time < global_io_flow_base->STAT_min_device_response_time_read) {
+				global_io_flow_base->STAT_min_device_response_time_read = device_response_time;
+			}
+			if (request_delay > global_io_flow_base->STAT_max_request_delay_read) {
+				global_io_flow_base->STAT_max_request_delay_read = request_delay;
+			}
+			if (request_delay < global_io_flow_base->STAT_min_request_delay_read) {
+				global_io_flow_base->STAT_min_request_delay_read = request_delay;
+			}
+			global_io_flow_base->STAT_transferred_bytes_read += io_request->LBA_count * SECTOR_SIZE_IN_BYTE;
+		} else {
+			global_io_flow_base->STAT_serviced_write_request_count++;
+			global_io_flow_base->STAT_sum_device_response_time_write += device_response_time;
+			global_io_flow_base->STAT_sum_request_delay_write += request_delay;
+			if (device_response_time > global_io_flow_base->STAT_max_device_response_time_write) {
+				global_io_flow_base->STAT_max_device_response_time_write = device_response_time;
+			}
+			if (device_response_time < global_io_flow_base->STAT_min_device_response_time_write) {
+				global_io_flow_base->STAT_min_device_response_time_write = device_response_time;
+			}
+			if (request_delay > global_io_flow_base->STAT_max_request_delay_write) {
+				global_io_flow_base->STAT_max_request_delay_write = request_delay;
+			}
+			if (request_delay < global_io_flow_base->STAT_min_request_delay_write) {
+				global_io_flow_base->STAT_min_request_delay_write = request_delay;
+			}
+			global_io_flow_base->STAT_transferred_bytes_write += io_request->LBA_count * SECTOR_SIZE_IN_BYTE;
+		}
+		// *
 		pcie_switch->Deliver_to_device(message);
 
 		//request_count++;
 
 		delete io_request;
-
 	}
 
 	void CXL_PCIe::Set_pcie_switch(PCIe_Switch* pcie_switch) {
