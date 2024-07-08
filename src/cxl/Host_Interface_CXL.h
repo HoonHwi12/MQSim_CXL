@@ -28,6 +28,10 @@ public:
 	bool rw{ 1 };
 };
 
+// * hoonhwi
+const uint16_t CACHE_HIT = 0;
+const uint16_t CACHE_MISS = 1;
+
 namespace SSD_Components
 {
 
@@ -196,15 +200,17 @@ namespace SSD_Components
 		CXL_Manager* cxl_man;
 		CXL_DRAM_Model* cxl_dram;
 
+
+
 		void Consume_pcie_message(Host_Components::PCIe_Message* message)
 		{
-			if (!(cxl_man->process_requests(message->Address, message->Payload, 0))) {
+			if (cxl_man->process_requests(message->Address, message->Payload, 0) == CACHE_HIT) {
 				delete message;
 				return;
 			}
 			else {
-
-				if(cxl_man->cxl_config_para.has_cache)((Submission_Queue_Entry*)message->Payload)->Opcode = NVME_READ_OPCODE;
+				// * hoonhwi: ????
+				// if(cxl_man->cxl_config_para.has_cache)((Submission_Queue_Entry*)message->Payload)->Opcode = NVME_READ_OPCODE;
 				request_fetch_unit->Fetch_next_request(0);
 			}
 

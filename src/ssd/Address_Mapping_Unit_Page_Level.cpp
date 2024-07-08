@@ -100,6 +100,7 @@ namespace SSD_Components
 
 	void Cached_Mapping_Table::Update_mapping_info(const stream_id_type streamID, const LPA_type lpa, const PPA_type ppa, const page_status_type pageWriteState)
 	{
+		PRINT_MESSAGE("Update_cache mapping_info");
 		LPA_type key = LPN_TO_UNIQUE_KEY(streamID, lpa);
 		auto it = addressMap.find(key);
 		assert(it != addressMap.end());
@@ -118,7 +119,6 @@ namespace SSD_Components
 		if (it == addressMap.end()) {
 			throw std::logic_error("No slot is reserved!");
 		}
-
 		it->second->Status = CMTEntryStatus::VALID;
 		it->second->PPA = ppa;
 		it->second->WrittenStateBitmap = pageWriteState;
@@ -544,158 +544,231 @@ namespace SSD_Components
 	}
 
 
+	// * hoon: here
 	int Address_Mapping_Unit_Page_Level::Translate_lpa_to_ppa_and_dispatch( std::list<NVM_Transaction*>& transactionList, User_Request* user_request, unsigned int* back_pressure_buffer_depth)
 	{
 		int count = 0;
 		bool try_query = true;
 		int subpgs_hanged_r = 0;
 		int subpgs_hanged_w = 0;
-
 		// checking the possiblity of write request using token value.
 		std::list<NVM_Transaction*>::const_iterator it = transactionList.begin();
 		bool is_write = (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::WRITE) ? true : false;
+		// * hoon: generate wrsync
+		// std::list<NVM_Transaction*>::const_iterator gen_iter = transactionList.begin();
+		// NVM_Transaction_Flash_WR* gen_transaction = (NVM_Transaction_Flash_WR*)(*gen_iter);
+		// stream_id_type gen_stream_id = gen_transaction->Stream_id;
+		// AddressMappingDomain* gen_domain = domains[gen_stream_id];
+		// if(is_write)
+		// {
+		// 	if (gen_domain->Get_ppa(ideal_mapping_table, gen_stream_id, (LPA_type)gen_transaction->UserIORequest->Data) != NO_PPA) {
+		// 		PRINT_MESSAGE("write sync!");
+		// 		user_request->wrsync = true;
+		// 	}
+		// }
+		// else
+		// {
+		// 	if (gen_domain->Get_ppa(ideal_mapping_table, gen_stream_id, (LPA_type)gen_transaction->UserIORequest->Data) != NO_PPA) {
+		// 		PRINT_MESSAGE("read sync!");
+		// 		user_request->wrsync = true;
+		// 	}
+		// }
+		// *
 
-		//if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::WRITE) std::cout << transactionList.size() << std::endl;;
-
-		if ((is_write == true) && (transactionList.size() >= (flush_unit_count))) {
-
-#ifdef EXECUTION_CONTROL
-			if (ftl->GC_and_WL_Unit->Consume_token(flush_unit_count) != true)
+		// * hoonhwi
+		if(user_request->wrsync)
+		{
+			if(is_write)
 			{
-				try_query = false;
-			}
-#else 
-			if (ftl->GC_and_WL_Unit->Stop_servicing_writes(((NVM_Transaction_Flash*)(*it))->Address)) {
-				try_query = false;
-			}
-#endif			
-		}
+				for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
+					NVM_Transaction_Flash_WR* transaction = (NVM_Transaction_Flash_WR*)(*it);
+					stream_id_type stream_id = transaction->Stream_id;
+					AddressMappingDomain* domain = domains[stream_id];
 
-
-		//query until flush_unit_count 
-		for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
-
-			if (try_query != true) {
-				//iterator should be post-incremented since the iterator may be deleted from list
-				manage_unsuccessful_write((NVM_Transaction_Flash*)*(it++));
-			}
-			else {
-				if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::READ && transactionList.size() > 4) {
-					//std::cout << "[read_ppa debug]" << std::endl;
-				}
-				query_cmt((NVM_Transaction_Flash*)(*it++));
-			}
-
-			if (is_write == true) {
-				count++;
-				if (count == flush_unit_count) {
-					break;
-				}
-			}
-		}
-
-
-		if (try_query) {
-			if (GC_on_for_debug) {
-				subpgs_host_w_debug += transactionList.size();
-				//std::cout << "host subpgs W: " << subpgs_host_w_debug << ", ";
-			}
-			CustomIterator first (transactionList.begin());
-			CustomIterator second (transactionList.end());
-			stable_sort(first, second, cmp);
-			transactionList = list<NVM_Transaction*>(first, second);
-
-			///*
-			int align_unit = ALIGN_UNIT_SIZE;
-			bool stop_iterate = false;
-			PPA_type bound_btm_PPA = 0;
-			PPA_type bound_top_PPA = 0;
-
-			if (transactionList.size() > 1) { // && transactionList.front()->Type == Transaction_Type::WRITE) {
-				if (transactionList.front()->Type == Transaction_Type::READ) {
-					//std::cout << "[0. host read trs sort debug] tr_list size: " << transactionList.size() << std::endl;
-				}
-				int end_PPA_of_arr = ((NVM_Transaction_Flash*)(transactionList.back()))->PPA;
-				for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); it++) {
-					stop_iterate = false;
-					bound_btm_PPA = (((NVM_Transaction_Flash*)(*it))->PPA) / align_unit; bound_btm_PPA *= align_unit;
-					bound_top_PPA = bound_btm_PPA + align_unit;
-					for (int i = 1; i < align_unit;) {
-						int dist = (((NVM_Transaction_Flash*)(*(next(it, i))))->PPA) - (((NVM_Transaction_Flash*)(*it))->PPA);
-						if ((*it)->Type == Transaction_Type::READ) {
-							//std::cout << "[2. host read trs sort debug] dist: " << dist << std::endl;
-							//
-						}
-
-						if (((NVM_Transaction_Flash*)(*(next(it, i))))->PPA == end_PPA_of_arr || abs(dist) >= align_unit) { stop_iterate = true; }
-						if ((abs(dist) < align_unit) && ((((NVM_Transaction_Flash*)(*(next(it, i))))->PPA >= bound_btm_PPA) && (((NVM_Transaction_Flash*)(*(next(it, i))))->PPA < bound_top_PPA))) {
-							if ((*it)->Type == Transaction_Type::WRITE) {
-								((NVM_Transaction_Flash_WR*)(*it))->RelatedWrite_SUB.push_back(((NVM_Transaction_Flash_WR*)(*(next(it, i)))));
-								transactionList.erase(next(it, i)); i--;
-								subpgs_hanged_w++;
-								count--;
-							}
-							else if ((*it)->Type == Transaction_Type::READ) {
-								if (transactionList.size() > 4) {
-									//std::cout<< "trList.size(): "<< transactionList.size() <<", two PPAs:" <<((NVM_Transaction_Flash*)(*it))->Address.ChannelID<<", " << ((NVM_Transaction_Flash*)(*it))->Address.ChipID << ", " << ((NVM_Transaction_Flash*)(*it))->Address.DieID << ", " << ((NVM_Transaction_Flash*)(*it))->Address.PlaneID << ", next tr: " << ((NVM_Transaction_Flash*)(*(next(it, i))))->Address.ChannelID<<", " << ((NVM_Transaction_Flash*)(*(next(it, i))))->Address.ChipID << ", " << ((NVM_Transaction_Flash*)(*(next(it, i))))->Address.DieID << ", " << ((NVM_Transaction_Flash*)(*(next(it, i))))->Address.PlaneID << ", " << std::endl;
-								}
-								if (dist == 0) { //this means there is no lpa-ppa info in Mapping table(first read access). so just delete one because we assume we can read multiple subpgs in page by one shot.
-									transactionList.erase(next(it, i)); i--;
-								}
-								else {
-									((NVM_Transaction_Flash_RD*)(*it))->RelatedRead_SUB.push_back(((NVM_Transaction_Flash_RD*)(*(next(it, i)))));
-									transactionList.erase(next(it, i)); i--;
-									subpgs_hanged_r++;
-								}
-								
-							}
-						}
-						if (stop_iterate) break;
-						i++;
+					//*[lpa,ppa] = [Data,PPA] --> [startlba,ppa]
+					//translate_lpa_to_ppa();
+					PPA_type ppa = domain->Get_ppa(ideal_mapping_table, stream_id, (LPA_type)transaction->UserIORequest->Data);
+					if (ppa == NO_PPA) {
+					 	PRINT_MESSAGE("wsync: no ppa");
+						continue;
 					}
-					if (*it == transactionList.back()) break;
-					if (((NVM_Transaction_Flash*)(*(next(it, 1))))->PPA == end_PPA_of_arr) { break; }
+					transaction->PPA = ppa;
+					//Convert_ppa_to_address(transaction->PPA, transaction->Address);
+					//block_manager->Read_transaction_issued(transaction->Address);
+					transaction->Physical_address_determined = true;
+					
+					domains[stream_id]->Update_mapping_info(ideal_mapping_table, stream_id, transaction->LPA, transaction->PPA, transaction->write_sectors_bitmap);
+					transactionList.erase(it);
+				}
+			}
+			else // read
+			{
+				for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
+					NVM_Transaction_Flash_WR* transaction = (NVM_Transaction_Flash_WR*)(*it);
+					stream_id_type stream_id = transaction->Stream_id;
+					AddressMappingDomain* domain = domains[stream_id];
+
+					//*[lpa,ppa] = [startlba,PPA] --> [Data,ppa]
+					//translate_lpa_to_ppa();
+					PPA_type ppa = domain->Get_ppa(ideal_mapping_table, stream_id, (LPA_type)transaction->UserIORequest->Start_LBA);
+					if (ppa == NO_PPA) {
+					 	PRINT_MESSAGE("rsync: no ppa");
+						continue;
+					}
+					transaction->PPA = ppa;
+					//Convert_ppa_to_address(transaction->PPA, transaction->Address);
+					//block_manager->Read_transaction_issued(transaction->Address);
+					transaction->Physical_address_determined = true;
+					
+					domains[stream_id]->Update_mapping_info(ideal_mapping_table, stream_id, transaction->LPA, transaction->PPA, transaction->write_sectors_bitmap);
+					transactionList.erase(it);
 				}
 			}
 		}
+		else //* !user_request->wrsync
+		{
+			//if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::WRITE) std::cout << transactionList.size() << std::endl;;
+
+			if ((is_write == true) && (transactionList.size() >= (flush_unit_count))) {
+
+	#ifdef EXECUTION_CONTROL
+				if (ftl->GC_and_WL_Unit->Consume_token(flush_unit_count) != true)
+				{
+					try_query = false;
+				}
+	#else 
+				if (ftl->GC_and_WL_Unit->Stop_servicing_writes(((NVM_Transaction_Flash*)(*it))->Address)) {
+					try_query = false;
+				}
+	#endif			
+			}
 
 
+			//query until flush_unit_count 
+			for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
 
-		if (transactionList.size() > 0) {
-			int issue_count = 0;
-			ftl->TSU->Prepare_for_transaction_submit();
-			for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin();
-				it != transactionList.end(); it++) {
-				if (((NVM_Transaction_Flash*)(*it))->Physical_address_determined) {
-					ftl->TSU->Submit_transaction(static_cast<NVM_Transaction_Flash*>(*it));
-					if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::WRITE) {
-						/*
-						if (((NVM_Transaction_Flash_WR*)(*it))->RelatedWrite_SUB != NULL) {
-							std::cout << "RelatedWrite_SUB != NULL, PPA: " <<((NVM_Transaction_Flash_WR*)(*it))-> RelatedWrite_SUB->PPA << std::endl; //checked
-						}
-						*/
-						if (((NVM_Transaction_Flash_WR*)(*it))->RelatedRead != NULL) {
-							ftl->TSU->Submit_transaction(((NVM_Transaction_Flash_WR*)(*it))->RelatedRead);
-
-						}
+				if (try_query != true) {
+					//iterator should be post-incremented since the iterator may be deleted from list
+					manage_unsuccessful_write((NVM_Transaction_Flash*)*(it++));
+				}
+				else {
+					if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::READ && transactionList.size() > 4) {
+						//std::cout << "[read_ppa debug]" << std::endl;
 					}
+					query_cmt((NVM_Transaction_Flash*)(*it++));
 				}
 
-				if (is_write == true) {					
-					issue_count++;
-					if (issue_count == count) {
-						Stats::Host_write_count += issue_count;
-						Stats::Host_write_count_subpgs += (issue_count + subpgs_hanged_w);
+				if (is_write == true) {
+					count++;
+					if (count == flush_unit_count) {
 						break;
 					}
 				}
 			}
 
-			ftl->TSU->Schedule();
+
+			if (try_query) {
+				if (GC_on_for_debug) {
+					subpgs_host_w_debug += transactionList.size();
+					//std::cout << "host subpgs W: " << subpgs_host_w_debug << ", ";
+				}
+				CustomIterator first (transactionList.begin());
+				CustomIterator second (transactionList.end());
+				stable_sort(first, second, cmp);
+				transactionList = list<NVM_Transaction*>(first, second);
+
+				///*
+				int align_unit = ALIGN_UNIT_SIZE;
+				bool stop_iterate = false;
+				PPA_type bound_btm_PPA = 0;
+				PPA_type bound_top_PPA = 0;
+
+				if (transactionList.size() > 1) { // && transactionList.front()->Type == Transaction_Type::WRITE) {
+					if (transactionList.front()->Type == Transaction_Type::READ) {
+						//std::cout << "[0. host read trs sort debug] tr_list size: " << transactionList.size() << std::endl;
+					}
+					int end_PPA_of_arr = ((NVM_Transaction_Flash*)(transactionList.back()))->PPA;
+					for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); it++) {
+						stop_iterate = false;
+						bound_btm_PPA = (((NVM_Transaction_Flash*)(*it))->PPA) / align_unit; bound_btm_PPA *= align_unit;
+						bound_top_PPA = bound_btm_PPA + align_unit;
+						for (int i = 1; i < align_unit;) {
+							int dist = (((NVM_Transaction_Flash*)(*(next(it, i))))->PPA) - (((NVM_Transaction_Flash*)(*it))->PPA);
+							if ((*it)->Type == Transaction_Type::READ) {
+								//std::cout << "[2. host read trs sort debug] dist: " << dist << std::endl;
+								//
+							}
+
+							if (((NVM_Transaction_Flash*)(*(next(it, i))))->PPA == end_PPA_of_arr || abs(dist) >= align_unit) { stop_iterate = true; }
+							if ((abs(dist) < align_unit) && ((((NVM_Transaction_Flash*)(*(next(it, i))))->PPA >= bound_btm_PPA) && (((NVM_Transaction_Flash*)(*(next(it, i))))->PPA < bound_top_PPA))) {
+								if ((*it)->Type == Transaction_Type::WRITE) {
+									((NVM_Transaction_Flash_WR*)(*it))->RelatedWrite_SUB.push_back(((NVM_Transaction_Flash_WR*)(*(next(it, i)))));
+									transactionList.erase(next(it, i)); i--;
+									subpgs_hanged_w++;
+									count--;
+								}
+								else if ((*it)->Type == Transaction_Type::READ) {
+									if (transactionList.size() > 4) {
+										//std::cout<< "trList.size(): "<< transactionList.size() <<", two PPAs:" <<((NVM_Transaction_Flash*)(*it))->Address.ChannelID<<", " << ((NVM_Transaction_Flash*)(*it))->Address.ChipID << ", " << ((NVM_Transaction_Flash*)(*it))->Address.DieID << ", " << ((NVM_Transaction_Flash*)(*it))->Address.PlaneID << ", next tr: " << ((NVM_Transaction_Flash*)(*(next(it, i))))->Address.ChannelID<<", " << ((NVM_Transaction_Flash*)(*(next(it, i))))->Address.ChipID << ", " << ((NVM_Transaction_Flash*)(*(next(it, i))))->Address.DieID << ", " << ((NVM_Transaction_Flash*)(*(next(it, i))))->Address.PlaneID << ", " << std::endl;
+									}
+									if (dist == 0) { //this means there is no lpa-ppa info in Mapping table(first read access). so just delete one because we assume we can read multiple subpgs in page by one shot.
+										transactionList.erase(next(it, i)); i--;
+									}
+									else {
+										((NVM_Transaction_Flash_RD*)(*it))->RelatedRead_SUB.push_back(((NVM_Transaction_Flash_RD*)(*(next(it, i)))));
+										transactionList.erase(next(it, i)); i--;
+										subpgs_hanged_r++;
+									}
+									
+								}
+							}
+							if (stop_iterate) break;
+							i++;
+						}
+						if (*it == transactionList.back()) break;
+						if (((NVM_Transaction_Flash*)(*(next(it, 1))))->PPA == end_PPA_of_arr) { break; }
+					}
+				}
+			}
+
+
+
+			if (transactionList.size() > 0) {
+				int issue_count = 0;
+				ftl->TSU->Prepare_for_transaction_submit();
+				for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin();
+					it != transactionList.end(); it++) {
+					if (((NVM_Transaction_Flash*)(*it))->Physical_address_determined) {
+						ftl->TSU->Submit_transaction(static_cast<NVM_Transaction_Flash*>(*it));
+						if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::WRITE) {
+							/*
+							if (((NVM_Transaction_Flash_WR*)(*it))->RelatedWrite_SUB != NULL) {
+								std::cout << "RelatedWrite_SUB != NULL, PPA: " <<((NVM_Transaction_Flash_WR*)(*it))-> RelatedWrite_SUB->PPA << std::endl; //checked
+							}
+							*/
+							if (((NVM_Transaction_Flash_WR*)(*it))->RelatedRead != NULL) {
+								ftl->TSU->Submit_transaction(((NVM_Transaction_Flash_WR*)(*it))->RelatedRead);
+
+							}
+						}
+					}
+
+					if (is_write == true) {					
+						issue_count++;
+						if (issue_count == count) {
+							Stats::Host_write_count += issue_count;
+							Stats::Host_write_count_subpgs += (issue_count + subpgs_hanged_w);
+							break;
+						}
+					}
+				}
+
+				ftl->TSU->Schedule();
+			}
+
+
+			Start_servicing_writes_for_overfull();
 		}
-
-
-		Start_servicing_writes_for_overfull();
 
 
 		return count;
@@ -1635,7 +1708,6 @@ namespace SSD_Components
 			block_manager->Allocate_block_and_page_in_plane_for_user_write(transaction->Stream_id, transaction->Address);
 		}
 		transaction->PPA = Convert_address_to_ppa(transaction->Address);
-
 
 		domain->Update_mapping_info(ideal_mapping_table, transaction->Stream_id, transaction->LPA, transaction->PPA,
 			((NVM_Transaction_Flash_WR*)transaction)->write_sectors_bitmap | domain->Get_page_status(ideal_mapping_table, transaction->Stream_id, transaction->LPA));

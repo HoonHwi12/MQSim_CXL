@@ -9,10 +9,13 @@
 
 extern int testbit;
 
-const bool PAGE_TABLE_ON = true;
+const bool PAGE_TABLE_ON = false;
 const size_t PAGE_SIZE = 4096;
 const size_t MAX_PAGE_TABLE_SIZE = 256;
 const size_t MAX_BUFFER_CACHE_SIZE = 64;
+const size_t buffer_cache_time_coeff = 100000;
+
+extern uint64_t buffer_cache_time;
 
 struct PageTableEntry {
 	size_t virtualPageNumber;

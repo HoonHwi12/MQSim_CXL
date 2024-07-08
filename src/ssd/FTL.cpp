@@ -46,6 +46,7 @@ namespace SSD_Components
 	}
 	void FTL::Perform_precondition(std::vector<Utils::Workload_Statistics*> workload_stats)
 	{
+		PRINT_MESSAGE("here4");
 		Address_Mapping_Unit->Store_mapping_table_on_flash_at_start();
 
 		double overall_rate = 0;
@@ -1058,10 +1059,12 @@ namespace SSD_Components
 
 	void FTL::Execute_simulator_event(MQSimEngine::Sim_Event*)
 	{
+		PRINT_MESSAGE("ftl?");
 	}
 
 	LPA_type FTL::Convert_host_logical_address_to_device_address(LHA_type lha)
 	{
+		PRINT_MESSAGE("here1");
 #if PATCH_PRECOND
 		//return lha / (page_size_in_sectors/ALIGN_UNIT_SIZE);
 		return lha / (page_size_in_sectors / ALIGN_UNIT_SIZE); /// ALIGN_UNIT_SIZE;

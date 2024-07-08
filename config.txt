@@ -1,9 +1,9 @@
-DRAM_mode 1
+DRAM_mode 0
 Has_cache 1
 DRAM_size 67108864
 Mix_mode 1
 Cache_portion_percentage 100
-Has_mshr 1
+Has_mshr 0
 Cache_placement 16
 Cache_policy CFLRU
 Prefetcher Best-offset

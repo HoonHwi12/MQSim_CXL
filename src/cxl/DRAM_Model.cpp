@@ -116,8 +116,6 @@ namespace SSD_Components {
 			delete current_access;
 			break;
 		case CXL_DRAM_EVENTS::PREFETCH_READY:
-			//* added hoon
-			number_of_accesses++;
 			//flash_read_count++;
 			//outputf.of << "Finished_time " << Simulator->Time() << " Starting_time " << current_access->initiate_time << " Prefetch_ready_at " << current_access->lba << std::endl;
 			prefetch_amount++;

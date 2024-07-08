@@ -69,7 +69,6 @@ namespace Host_Components {
 		message->Payload = sqe;
 		message->Payload_size = sizeof(Submission_Queue_Entry);
 
-		// * hoonhwi
 		sim_time_type device_response_time = Simulator->Time() - io_request->Enqueue_time;
 		sim_time_type request_delay = Simulator->Time() - io_request->Arrival_time;		
 		global_io_flow_base->STAT_serviced_request_count++;
@@ -126,7 +125,7 @@ namespace Host_Components {
 			}
 			global_io_flow_base->STAT_transferred_bytes_write += io_request->LBA_count * SECTOR_SIZE_IN_BYTE;
 		}
-		// *
+
 		pcie_switch->Deliver_to_device(message);
 
 		//request_count++;

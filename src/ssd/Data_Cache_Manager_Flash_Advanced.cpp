@@ -184,7 +184,7 @@ namespace SSD_Components
 										break;
 									case Utils::Address_Distribution_Type::RANDOM_HOTCOLD:
 										break;
-									case Utils::Address_Distribution_Type::RANDOM_UNIFORM:
+										case Utils::Address_Distribution_Type::RANDOM_UNIFORM:
 										break;
 								}
 							} else {
@@ -202,6 +202,7 @@ namespace SSD_Components
 		}
 	}
 
+	// *hoon: here
 	void Data_Cache_Manager_Flash_Advanced::process_new_user_request(User_Request* user_request)
 	{
 		//This condition shouldn't happen, but we check it

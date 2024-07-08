@@ -5,6 +5,7 @@
 
 // * hoonhwi
 int testbit = 0;
+uint64_t buffer_cache_time = 0;
 PageTable::PageTable() {}
 PageTable pagetable;
 BufferCache::BufferCache() {}
@@ -338,8 +339,14 @@ namespace Host_Components
 			{
 				if(PAGE_TABLE_ON && pagetable.translate_pageTable(request->Start_LBA) >= 0) // page hit
 				{
-					PRINT_MESSAGE("page hit Address: " << request->Start_LBA);
+					// PRINT_MESSAGE("page hit Address: " << request->Start_LBA);
 					global_io_flow_base->STAT_PAGE_CACHE_HIT++;
+					global_io_flow_base->STAT_serviced_request_count++;
+					global_io_flow_base->STAT_serviced_request_count_short_term++;
+					global_io_flow_base->STAT_transferred_bytes_total += request->LBA_count * SECTOR_SIZE_IN_BYTE;
+					global_io_flow_base->STAT_serviced_read_request_count++;
+					global_io_flow_base->STAT_transferred_bytes_read += request->LBA_count * SECTOR_SIZE_IN_BYTE;
+					buffer_cache_time += buffer_cache_time_coeff;
 				}
 				else
 				{
@@ -357,7 +364,13 @@ namespace Host_Components
 			{
 				if(PAGE_TABLE_ON && buffercache.update_dirty(*request).valid) // write buffer hit
 				{
-					PRINT_MESSAGE("update dirty buffer cache");
+					// PRINT_MESSAGE("update dirty buffer cache");
+					global_io_flow_base->STAT_serviced_request_count++;
+					global_io_flow_base->STAT_serviced_request_count_short_term++;
+					global_io_flow_base->STAT_transferred_bytes_total += request->LBA_count * SECTOR_SIZE_IN_BYTE;
+					global_io_flow_base->STAT_serviced_write_request_count++;
+					global_io_flow_base->STAT_transferred_bytes_write += request->LBA_count * SECTOR_SIZE_IN_BYTE;
+					buffer_cache_time += buffer_cache_time_coeff;
 				}
 				else
 				{

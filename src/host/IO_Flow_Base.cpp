@@ -2,7 +2,9 @@
 #include "../ssd/Host_Interface_Defs.h"
 #include "../sim/Engine.h"
 
-
+// * hoonhwi
+#include "Host_Buffer_Cache.h"
+// *
 
 
 namespace Host_Components
@@ -579,26 +581,27 @@ namespace Host_Components
 		xmlwriter.Write_attribute_string(attr, val);
 
 		attr = "IOPS";
-		val = std::to_string((double)STAT_generated_request_count / (Simulator->Time() / SIM_TIME_TO_SECONDS_COEFF));
+		// * hoonhwi
+		val = std::to_string((double)STAT_generated_request_count / ((Simulator->Time() - buffer_cache_time) / SIM_TIME_TO_SECONDS_COEFF));
 		xmlwriter.Write_attribute_string(attr, val);
 
 		attr = "IOPS_Read";
-		val = std::to_string((double)STAT_generated_read_request_count / (Simulator->Time() / SIM_TIME_TO_SECONDS_COEFF));
+		val = std::to_string((double)STAT_generated_read_request_count / ((Simulator->Time() - buffer_cache_time) / SIM_TIME_TO_SECONDS_COEFF));
 		xmlwriter.Write_attribute_string(attr, val);
 
 		attr = "IOPS_Write";
-		val = std::to_string((double)STAT_generated_write_request_count / (Simulator->Time() / SIM_TIME_TO_SECONDS_COEFF));
+		val = std::to_string((double)STAT_generated_write_request_count / ((Simulator->Time() - buffer_cache_time) / SIM_TIME_TO_SECONDS_COEFF));
 		xmlwriter.Write_attribute_string(attr, val);
 
 #if ANLZ_AFTER_PRECOND
 		attr = "IOPS_Write_after_PRECOND";
-		val = std::to_string( ((double)STAT_generated_write_request_count-(double)STAT_generated_request_count_before_PRECOND) / ((Simulator->Time() - Simulator->sim_time_before_PRECOND) / SIM_TIME_TO_SECONDS_COEFF) );
+		val = std::to_string( ((double)STAT_generated_write_request_count-(double)STAT_generated_request_count_before_PRECOND) / (((Simulator->Time() - buffer_cache_time) - Simulator->sim_time_before_PRECOND) / SIM_TIME_TO_SECONDS_COEFF) );
 		xmlwriter.Write_attribute_string(attr, val);
 #endif
 
 #if ANLZ_AFTER_GC
 		attr = "IOPS_Write_after_GC";
-		val = std::to_string(((double)STAT_generated_write_request_count - (double)STAT_generated_request_count_before_GC) / (((double)Simulator->Time() - (double)Simulator->sim_time_before_GC) / (double)SIM_TIME_TO_SECONDS_COEFF));
+		val = std::to_string(((double)STAT_generated_write_request_count - (double)STAT_generated_request_count_before_GC) / (((double)(Simulator->Time() - buffer_cache_time) - (double)Simulator->sim_time_before_GC) / (double)SIM_TIME_TO_SECONDS_COEFF));
 		xmlwriter.Write_attribute_string(attr, val);
 #endif
 
@@ -615,15 +618,15 @@ namespace Host_Components
 		xmlwriter.Write_attribute_string(attr, val);
 
 		attr = "Bandwidth";
-		val = std::to_string((double)STAT_transferred_bytes_total / (Simulator->Time() / SIM_TIME_TO_SECONDS_COEFF));
+		val = std::to_string((double)STAT_transferred_bytes_total / ((Simulator->Time() - buffer_cache_time) / SIM_TIME_TO_SECONDS_COEFF));
 		xmlwriter.Write_attribute_string(attr, val);
 
 		attr = "Bandwidth_Read";
-		val = std::to_string((double)STAT_transferred_bytes_read / (Simulator->Time() / SIM_TIME_TO_SECONDS_COEFF));
+		val = std::to_string((double)STAT_transferred_bytes_read / ((Simulator->Time() - buffer_cache_time) / SIM_TIME_TO_SECONDS_COEFF));
 		xmlwriter.Write_attribute_string(attr, val);
 
 		attr = "Bandwidth_Write";
-		val = std::to_string((double)STAT_transferred_bytes_write / (Simulator->Time() / SIM_TIME_TO_SECONDS_COEFF));
+		val = std::to_string((double)STAT_transferred_bytes_write / ((Simulator->Time() - buffer_cache_time) / SIM_TIME_TO_SECONDS_COEFF));
 		xmlwriter.Write_attribute_string(attr, val);
 
 

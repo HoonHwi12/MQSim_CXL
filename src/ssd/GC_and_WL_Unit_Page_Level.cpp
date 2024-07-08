@@ -249,7 +249,6 @@ namespace SSD_Components
 			bool stop_iterate = false;
 			PPA_type bound_btm_PPA = 0;
 			PPA_type bound_top_PPA = 0;
-
 			if (waiting_writeback_transaction.size() > 1) {
 				int end_PPA_of_arr = ((NVM_Transaction_Flash*)(waiting_writeback_transaction.back()))->PPA;
 				for (std::list<NVM_Transaction*>::const_iterator it = waiting_writeback_transaction.begin(); it != waiting_writeback_transaction.end(); it++) {

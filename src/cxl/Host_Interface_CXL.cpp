@@ -267,7 +267,7 @@ namespace SSD_Components
 
 
 	bool CXL_Manager::process_requests(uint64_t address, void* payload, bool is_pref_req) {
-		bool cache_miss{ 1 };
+		bool cache_miss{ CACHE_MISS };
 
 		Submission_Queue_Entry* sqe = (Submission_Queue_Entry*)payload;
 		sqe->Command_specific[2] = ((uint32_t)((uint16_t)cxl_config_para.num_sec)) & (uint32_t)(0x0000ffff);
@@ -292,14 +292,14 @@ namespace SSD_Components
 
 		if (!cxl_config_para.has_cache) {
 			//ofprefetch_chance << flash_back_end_queue_size - flash_back_end_access_count - 1 << " cm" << endl;
-			return 1;
+			return CACHE_MISS;
 		}
 
 
 
 		if (cxl_config_para.dram_mode || dram->isCacheHit(lba)) {// && !dram->is_next_evict_candidate(lba)
 
-			cache_miss = 0;
+			cache_miss = CACHE_HIT;
 			bool rw{ (sqe->Opcode == NVME_READ_OPCODE) ? true : false };
 			CXL_DRAM_ACCESS* dram_request{ new CXL_DRAM_ACCESS{64, lba, rw, CXL_DRAM_EVENTS::CACHE_HIT, Simulator->Time()} };
 			((Host_Interface_CXL*)hi)->Send_request_to_CXL_DRAM(dram_request);
@@ -354,7 +354,7 @@ namespace SSD_Components
 
 				}
 
-				cache_miss = 1;
+				cache_miss = CACHE_MISS;
 				
 				return cache_miss;
 			}
@@ -362,7 +362,7 @@ namespace SSD_Components
 			
 
 			if (mshr->isInProgress(lba)) {
-				cache_miss = 0;
+				cache_miss = CACHE_HIT;
 
 				Submission_Queue_Entry* nsqe{ new Submission_Queue_Entry{*sqe} };
 				mshr->insertRequest(lba, Simulator->Time(), nsqe);
@@ -566,7 +566,7 @@ namespace SSD_Components
 					sqe->PRP_entry_2 = (DATA_MEMORY_REGION + 0x1000);//Dummy addresses
 
 					((Request_Fetch_Unit_CXL*)(((Host_Interface_CXL*)hi)->request_fetch_unit))->Fetch_next_request(0);
-
+// *hoon: not use
 					((Request_Fetch_Unit_CXL*)(((Host_Interface_CXL*)hi)->request_fetch_unit))->Process_pcie_read_message(0, sqe, sizeof(Submission_Queue_Entry));
 
 				}
@@ -908,14 +908,12 @@ namespace SSD_Components
 	{
 		Host_Interface_CXL* hi = (Host_Interface_CXL *)host_interface;
 
-
 		DMA_Req_Item* dma_req_item = dma_list.front();
 		dma_list.pop_front();
 
 		switch (dma_req_item->Type) {
 		case DMA_Req_Type::REQUEST_INFO:
 		{
-
 			User_Request* new_reqeust = new User_Request;
 			new_reqeust->IO_command_info = payload;
 			new_reqeust->Stream_id = (stream_id_type)((uint64_t)(dma_req_item->object));
@@ -1061,11 +1059,9 @@ namespace SSD_Components
 		//if (Simulator->Time() == 210411353) {
 		//	cout << " Check" << endl;
 		//}
-
 		if (!cxl_man->cxl_config_para.has_mshr) {
 			while(cxl_dram->getDRAMAvailability()>0) {
 				if (cxl_man->no_mshr_not_yet_serviced_lba.empty()) break;
-
 
 				uint64_t lba{ cxl_man->no_mshr_not_yet_serviced_lba.front() };
 				cxl_man->no_mshr_not_yet_serviced_lba.pop_front();
@@ -1089,8 +1085,6 @@ namespace SSD_Components
 
 
 				while (!flush_lba->empty()) {
-
-
 					//ofFlush << static_cast<float>(cxl_man->total_number_of_accesses) / static_cast<float>(cxl_man->cxl_config_para.total_number_of_requets) * 100 << endl;
 					cxl_man->flush_count++;
 					uint64_t lba{ flush_lba->front() };
@@ -1100,7 +1094,6 @@ namespace SSD_Components
 					Submission_Queue_Entry* sqe{ new Submission_Queue_Entry };
 					sqe->Command_Identifier = 0;
 					sqe->Opcode = NVME_WRITE_OPCODE;
-
 					sqe->Command_specific[0] = (uint32_t)lsa;
 					sqe->Command_specific[1] = (uint32_t)(lsa >> 32);
 					sqe->Command_specific[2] = ((uint32_t)((uint16_t)cxl_man->cxl_config_para.num_sec)) & (uint32_t)(0x0000ffff);
@@ -1109,11 +1102,9 @@ namespace SSD_Components
 					sqe->PRP_entry_2 = (DATA_MEMORY_REGION + 0x1000);//Dummy addresses
 
 					((Request_Fetch_Unit_CXL*)(this->request_fetch_unit))->Fetch_next_request(0);
-
+// *hoon: not use
 					((Request_Fetch_Unit_CXL*)(this->request_fetch_unit))->Process_pcie_read_message(0, sqe, sizeof(Submission_Queue_Entry));
-
 				}
-
 				delete flush_lba;
 			}
 
@@ -1395,7 +1386,7 @@ namespace SSD_Components
 				sqe->PRP_entry_2 = (DATA_MEMORY_REGION + 0x1000);//Dummy addresses
 
 				((Request_Fetch_Unit_CXL*)(this->request_fetch_unit))->Fetch_next_request(0);
-
+// *hoon: not use
 				((Request_Fetch_Unit_CXL*)(this->request_fetch_unit))->Process_pcie_read_message(0, sqe, sizeof(Submission_Queue_Entry));
 
 			}
@@ -1469,7 +1460,7 @@ namespace SSD_Components
 
 			cxl_man->in_progress_prefetch_lba->emplace(lba, Simulator->Time());
 			request_fetch_unit->Fetch_next_request(0);
-
+// *hoon: not use
 			request_fetch_unit->Process_pcie_read_message(0, sqe, sizeof(Submission_Queue_Entry));
 
 		}
