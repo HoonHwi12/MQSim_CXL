@@ -185,6 +185,10 @@ namespace SSD_Components
 		void allocate_plane_for_preconditioning(stream_id_type stream_id, LPA_type lpn, NVM::FlashMemory::Physical_Page_Address& targetAddress);
 		bool request_mapping_entry(const stream_id_type streamID, const LPA_type lpn);
 		static void handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction);
+
+		// * hoonhwi
+		bool translate_sync_lpa_to_ppa(stream_id_type streamID, NVM_Transaction_Flash* transaction);
+		// 
 		bool translate_lpa_to_ppa(stream_id_type streamID, NVM_Transaction_Flash* transaction);
 		std::set<NVM_Transaction_Flash_WR*>**** Write_transactions_for_overfull_planes;
 		std::list<NVM_Transaction_Flash_WR*> Write_transactions_for_overfull;
@@ -198,6 +202,9 @@ namespace SSD_Components
 		LPA_type get_end_LPN_in_MVP(const MVPN_type);
 
 		bool query_cmt(NVM_Transaction_Flash* transaction);
+		// * hoonhwi
+		bool query_cmt(NVM_Transaction_Flash* transaction, bool wrsync);
+		//*
 		PPA_type online_create_entry_for_reads(LPA_type lpa, const stream_id_type stream_id, NVM::FlashMemory::Physical_Page_Address& read_address, uint64_t read_sectors_bitmap);
 		void manage_unsuccessful_write(NVM_Transaction_Flash* transaction);
 		void mange_unsuccessful_translation(NVM_Transaction_Flash* transaction);

@@ -209,8 +209,7 @@ namespace SSD_Components
 				return;
 			}
 			else {
-				// * hoonhwi: ????
-				// if(cxl_man->cxl_config_para.has_cache)((Submission_Queue_Entry*)message->Payload)->Opcode = NVME_READ_OPCODE;
+				if(cxl_man->cxl_config_para.has_cache)((Submission_Queue_Entry*)message->Payload)->Opcode = NVME_READ_OPCODE;
 				request_fetch_unit->Fetch_next_request(0);
 			}
 

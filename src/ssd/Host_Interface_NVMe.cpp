@@ -303,7 +303,6 @@ namespace SSD_Components
 						new_reqeust->Size_in_byte = new_reqeust->SizeInSectors * SECTOR_SIZE_IN_BYTE;
 						break;
 					case NVME_WRITE_OPCODE:
-						PRINT_MESSAGE("hoonlog nvme host cxl: wr req");
 						new_reqeust->Type = UserRequestType::WRITE;
 						new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 31 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
 						new_reqeust->SizeInSectors = sqe->Command_specific[2] & (LHA_type)(0x0000ffff);

@@ -304,13 +304,11 @@ namespace Host_Components
 		else {
 			total_requests_to_be_generated = total_requests_in_file * total_replay_no;
 		}
-
 		trace_file.open(trace_file_path);
 		current_trace_line.clear();
 		std::getline(trace_file, trace_line);
 		Utils::Helper_Functions::Remove_cr(trace_line);
 		Utils::Helper_Functions::Tokenize(trace_line, ASCIILineDelimiter, current_trace_line);
-
 #if IGNORE_TIME_STAMP		
 		Simulator->Register_sim_event((sim_time_type)1, this);
 #else

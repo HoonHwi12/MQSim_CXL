@@ -73,6 +73,7 @@ namespace SSD_Components
 	void TSU_Base::handle_chip_idle_signal(NVM::FlashMemory::Flash_Chip* chip)
 	{
 		if (_my_instance->_NVMController->Get_channel_status(chip->ChannelID) == BusChannelStatus::IDLE) {
+			PRINT_MESSAGE("here3");
 			if (!_my_instance->service_read_transaction(chip)) {
 				if (!_my_instance->service_write_transaction(chip)) {
 					_my_instance->service_erase_transaction(chip);

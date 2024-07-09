@@ -8,6 +8,11 @@
 #include "Host_Interface_Defs.h"
 #include "NVM_Transaction.h"
 
+// * hoonhwi
+const bool SHADOW_MAPPING = false;
+const uint32_t SHADOW_FREQUENCY = 64;
+// *
+
 namespace SSD_Components
 {
 	enum class UserRequestType { READ, WRITE };

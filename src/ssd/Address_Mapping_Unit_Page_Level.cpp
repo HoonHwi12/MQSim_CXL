@@ -545,6 +545,8 @@ namespace SSD_Components
 
 
 	// * hoon: here
+	uint32_t shadow_index = 0;
+	// *
 	int Address_Mapping_Unit_Page_Level::Translate_lpa_to_ppa_and_dispatch( std::list<NVM_Transaction*>& transactionList, User_Request* user_request, unsigned int* back_pressure_buffer_depth)
 	{
 		int count = 0;
@@ -554,119 +556,60 @@ namespace SSD_Components
 		// checking the possiblity of write request using token value.
 		std::list<NVM_Transaction*>::const_iterator it = transactionList.begin();
 		bool is_write = (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::WRITE) ? true : false;
+
 		// * hoon: generate wrsync
-		// std::list<NVM_Transaction*>::const_iterator gen_iter = transactionList.begin();
-		// NVM_Transaction_Flash_WR* gen_transaction = (NVM_Transaction_Flash_WR*)(*gen_iter);
-		// stream_id_type gen_stream_id = gen_transaction->Stream_id;
-		// AddressMappingDomain* gen_domain = domains[gen_stream_id];
-		// if(is_write)
-		// {
-		// 	if (gen_domain->Get_ppa(ideal_mapping_table, gen_stream_id, (LPA_type)gen_transaction->UserIORequest->Data) != NO_PPA) {
-		// 		PRINT_MESSAGE("write sync!");
-		// 		user_request->wrsync = true;
-		// 	}
-		// }
-		// else
-		// {
-		// 	if (gen_domain->Get_ppa(ideal_mapping_table, gen_stream_id, (LPA_type)gen_transaction->UserIORequest->Data) != NO_PPA) {
-		// 		PRINT_MESSAGE("read sync!");
-		// 		user_request->wrsync = true;
-		// 	}
-		// }
+		if(SHADOW_MAPPING)
+		{
+			shadow_index++;
+			if(shadow_index >= SHADOW_FREQUENCY)
+			{
+				shadow_index = 0;
+				user_request->wrsync = true;
+			}
+		}
 		// *
 
-		// * hoonhwi
-		if(user_request->wrsync)
-		{
-			if(is_write)
-			{
-				for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
-					NVM_Transaction_Flash_WR* transaction = (NVM_Transaction_Flash_WR*)(*it);
-					stream_id_type stream_id = transaction->Stream_id;
-					AddressMappingDomain* domain = domains[stream_id];
+		if ((is_write == true) && (transactionList.size() >= (flush_unit_count))) {
 
-					//*[lpa,ppa] = [Data,PPA] --> [startlba,ppa]
-					//translate_lpa_to_ppa();
-					PPA_type ppa = domain->Get_ppa(ideal_mapping_table, stream_id, (LPA_type)transaction->UserIORequest->Data);
-					if (ppa == NO_PPA) {
-					 	PRINT_MESSAGE("wsync: no ppa");
-						continue;
-					}
-					transaction->PPA = ppa;
-					//Convert_ppa_to_address(transaction->PPA, transaction->Address);
-					//block_manager->Read_transaction_issued(transaction->Address);
-					transaction->Physical_address_determined = true;
-					
-					domains[stream_id]->Update_mapping_info(ideal_mapping_table, stream_id, transaction->LPA, transaction->PPA, transaction->write_sectors_bitmap);
-					transactionList.erase(it);
-				}
+#ifdef EXECUTION_CONTROL
+			if (ftl->GC_and_WL_Unit->Consume_token(flush_unit_count) != true)
+			{
+				try_query = false;
 			}
-			else // read
-			{
-				for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
-					NVM_Transaction_Flash_WR* transaction = (NVM_Transaction_Flash_WR*)(*it);
-					stream_id_type stream_id = transaction->Stream_id;
-					AddressMappingDomain* domain = domains[stream_id];
+#else 
+			if (ftl->GC_and_WL_Unit->Stop_servicing_writes(((NVM_Transaction_Flash*)(*it))->Address)) {
+				try_query = false;
+			}
+#endif			
+		}
 
-					//*[lpa,ppa] = [startlba,PPA] --> [Data,ppa]
-					//translate_lpa_to_ppa();
-					PPA_type ppa = domain->Get_ppa(ideal_mapping_table, stream_id, (LPA_type)transaction->UserIORequest->Start_LBA);
-					if (ppa == NO_PPA) {
-					 	PRINT_MESSAGE("rsync: no ppa");
-						continue;
-					}
-					transaction->PPA = ppa;
-					//Convert_ppa_to_address(transaction->PPA, transaction->Address);
-					//block_manager->Read_transaction_issued(transaction->Address);
-					transaction->Physical_address_determined = true;
-					
-					domains[stream_id]->Update_mapping_info(ideal_mapping_table, stream_id, transaction->LPA, transaction->PPA, transaction->write_sectors_bitmap);
-					transactionList.erase(it);
+
+		//query until flush_unit_count 
+		for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
+
+			if (try_query != true) {
+				//iterator should be post-incremented since the iterator may be deleted from list
+				manage_unsuccessful_write((NVM_Transaction_Flash*)*(it++));
+			}
+			else {
+				if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::READ && transactionList.size() > 4) {
+					//std::cout << "[read_ppa debug]" << std::endl;
+				}
+				// * hoonhwi: mapping at below function
+				//query_cmt((NVM_Transaction_Flash*)(*it++));
+				query_cmt((NVM_Transaction_Flash*)(*it++), user_request->wrsync);
+			}
+
+			if (is_write == true) {
+				count++;
+				if (count == flush_unit_count) {
+					break;
 				}
 			}
 		}
-		else //* !user_request->wrsync
+
+		if(!user_request->wrsync)
 		{
-			//if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::WRITE) std::cout << transactionList.size() << std::endl;;
-
-			if ((is_write == true) && (transactionList.size() >= (flush_unit_count))) {
-
-	#ifdef EXECUTION_CONTROL
-				if (ftl->GC_and_WL_Unit->Consume_token(flush_unit_count) != true)
-				{
-					try_query = false;
-				}
-	#else 
-				if (ftl->GC_and_WL_Unit->Stop_servicing_writes(((NVM_Transaction_Flash*)(*it))->Address)) {
-					try_query = false;
-				}
-	#endif			
-			}
-
-
-			//query until flush_unit_count 
-			for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
-
-				if (try_query != true) {
-					//iterator should be post-incremented since the iterator may be deleted from list
-					manage_unsuccessful_write((NVM_Transaction_Flash*)*(it++));
-				}
-				else {
-					if (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::READ && transactionList.size() > 4) {
-						//std::cout << "[read_ppa debug]" << std::endl;
-					}
-					query_cmt((NVM_Transaction_Flash*)(*it++));
-				}
-
-				if (is_write == true) {
-					count++;
-					if (count == flush_unit_count) {
-						break;
-					}
-				}
-			}
-
-
 			if (try_query) {
 				if (GC_on_for_debug) {
 					subpgs_host_w_debug += transactionList.size();
@@ -766,10 +709,8 @@ namespace SSD_Components
 				ftl->TSU->Schedule();
 			}
 
-
 			Start_servicing_writes_for_overfull();
 		}
-
 
 		return count;
 	}
@@ -802,6 +743,90 @@ namespace SSD_Components
 				mange_unsuccessful_translation(transaction);
 				return false;
 			}
+		} else {//Limited CMT
+			//Maybe we can catch mapping data from an on-the-fly write back request
+			if (request_mapping_entry(stream_id, transaction->LPA)) {
+				Stats::CMT_miss++;
+				Stats::CMT_miss_per_stream[stream_id]++;
+				if (transaction->Type == Transaction_Type::READ) {
+					Stats::total_readTR_CMT_queries++;
+					Stats::total_readTR_CMT_queries_per_stream[stream_id]++;
+					Stats::readTR_CMT_miss++;
+					Stats::readTR_CMT_miss_per_stream[stream_id]++;
+				} else { //This is a write transaction
+					Stats::total_writeTR_CMT_queries++;
+					Stats::total_writeTR_CMT_queries_per_stream[stream_id]++;
+					Stats::writeTR_CMT_miss++;
+					Stats::writeTR_CMT_miss_per_stream[stream_id]++;
+				}
+				if (translate_lpa_to_ppa(stream_id, transaction)) {
+					return true;
+				} else {
+					mange_unsuccessful_translation(transaction);
+					PRINT_ERROR("NNNOOOOOOOOOOOOOOOO");
+					return false;
+				}
+			} else {
+				if (transaction->Type == Transaction_Type::READ) {
+					Stats::total_readTR_CMT_queries++;
+					Stats::total_readTR_CMT_queries_per_stream[stream_id]++;
+					Stats::readTR_CMT_miss++;
+					Stats::readTR_CMT_miss_per_stream[stream_id]++;
+					domains[stream_id]->Waiting_unmapped_read_transactions.insert(std::pair<LPA_type, NVM_Transaction_Flash*>(transaction->LPA, transaction));
+				} else {//This is a write transaction
+					Stats::total_writeTR_CMT_queries++;
+					Stats::total_writeTR_CMT_queries_per_stream[stream_id]++;
+					Stats::writeTR_CMT_miss++;
+					Stats::writeTR_CMT_miss_per_stream[stream_id]++;
+					domains[stream_id]->Waiting_unmapped_program_transactions.insert(std::pair<LPA_type, NVM_Transaction_Flash*>(transaction->LPA, transaction));
+				}
+			}
+
+			return false;
+		}
+	}
+
+	// * hoonhwi
+	bool Address_Mapping_Unit_Page_Level::query_cmt(NVM_Transaction_Flash* transaction, bool wrsync)
+	{
+		stream_id_type stream_id = transaction->Stream_id;
+		Stats::total_CMT_queries++;
+		Stats::total_CMT_queries_per_stream[stream_id]++;
+		if (domains[stream_id]->Mapping_entry_accessible(ideal_mapping_table, stream_id, transaction->LPA))//Either limited or unlimited CMT
+		{
+			Stats::CMT_hits_per_stream[stream_id]++;
+			Stats::CMT_hits++;
+			if (transaction->Type == Transaction_Type::READ) {
+				Stats::total_readTR_CMT_queries_per_stream[stream_id]++;
+				Stats::total_readTR_CMT_queries++;
+				Stats::readTR_CMT_hits_per_stream[stream_id]++;
+				Stats::readTR_CMT_hits++;
+			} else {
+				//This is a write transaction
+				Stats::total_writeTR_CMT_queries++;
+				Stats::total_writeTR_CMT_queries_per_stream[stream_id]++;
+				Stats::writeTR_CMT_hits++;
+				Stats::writeTR_CMT_hits_per_stream[stream_id]++;
+			}
+			//
+
+			// * hoonhwi
+			if(!wrsync)
+			{
+				if (translate_lpa_to_ppa(stream_id, transaction)) {
+					return true;
+				} else {
+					mange_unsuccessful_translation(transaction);
+					return false;
+				}
+			}
+			else
+			{
+				if(translate_sync_lpa_to_ppa(stream_id, transaction)) {
+					return true;
+				}
+			}
+			// *
 		} else {//Limited CMT
 			//Maybe we can catch mapping data from an on-the-fly write back request
 			if (request_mapping_entry(stream_id, transaction->LPA)) {
@@ -902,6 +927,64 @@ namespace SSD_Components
 		}
 	}
 	
+	// * hoonhwi
+	bool Address_Mapping_Unit_Page_Level::translate_sync_lpa_to_ppa(stream_id_type streamID, NVM_Transaction_Flash* transaction)
+	{
+		PPA_type ppa = domains[streamID]->Get_ppa(ideal_mapping_table, streamID, transaction->LPA);
+
+		// * hoon: startLBA,ppa -> Data,ppa
+		if (transaction->Type == Transaction_Type::READ) {
+			//if (ppa == NO_PPA) std::cout << "lpa does not exists in table" << std::endl;
+			if (ppa == NO_PPA) {
+				//PRINT_MESSAGE("read no ppa");
+				ppa = online_create_entry_for_reads(transaction->LPA, streamID, transaction->Address, ((NVM_Transaction_Flash_RD*)transaction)->read_sectors_bitmap);
+			}
+			transaction->PPA = ppa;
+			Convert_ppa_to_address(transaction->PPA, transaction->Address);
+			//block_manager->Read_transaction_issued(transaction->Address);
+			//domains[streamID]->Update_mapping_info(ideal_mapping_table, streamID, transaction->LPA, transaction->PPA, transaction->read_sectors_bitmap);
+			transaction->Physical_address_determined = true;
+			
+			return true;
+		} else {//This is a write transaction	
+
+			int bypass_count = -1;
+			do{
+				if (bypass_count >= 0){
+					// program bypass - on...	
+					block_manager->Program_transaction_serviced(transaction->Address);
+				}
+				
+				allocate_plane_for_user_write((NVM_Transaction_Flash_WR*)transaction);
+#ifndef EXECUTION_CONTROL 
+				//there are too few free pages remaining only for GC
+				if (ftl->GC_and_WL_Unit->Stop_servicing_writes(transaction->Address)){
+					return false;
+				}
+#endif
+				(user_Alloc_count[((NVM_Transaction_Flash_WR*)transaction)->Stream_id])++;
+
+				allocate_page_in_plane_for_user_write((NVM_Transaction_Flash_WR*)transaction, false);
+
+				bypass_count++;
+			}
+			while (block_manager->Is_page_bypass(transaction->Address));			
+			transaction->Physical_address_determined = true;
+
+#ifdef EXECUTION_CONTROL 
+			if (bypass_count != 0)
+			{
+				Stats::Relief_page_count += bypass_count;
+				Stats::Interval_Relief_page_count += bypass_count;
+				Stats::Cur_relief_page_count += bypass_count;
+				ftl->GC_and_WL_Unit->Adjust_token(bypass_count);
+			}
+#endif				
+			return true;
+		}
+	}
+	// *
+
 	void Address_Mapping_Unit_Page_Level::Allocate_address_for_preconditioning(const stream_id_type stream_id, std::map<LPA_type, page_status_type>& lpa_list, std::vector<double>& steady_state_distribution)
 	{
 		int idx = 0;

@@ -1064,7 +1064,7 @@ namespace SSD_Components
 
 	LPA_type FTL::Convert_host_logical_address_to_device_address(LHA_type lha)
 	{
-		PRINT_MESSAGE("here1");
+		PRINT_MESSAGE("Convert_host_logical_address_to_device_address");
 #if PATCH_PRECOND
 		//return lha / (page_size_in_sectors/ALIGN_UNIT_SIZE);
 		return lha / (page_size_in_sectors / ALIGN_UNIT_SIZE); /// ALIGN_UNIT_SIZE;
