@@ -133,7 +133,7 @@ namespace SSD_Components
 		{
 			case Transaction_Type::READ:
 				// *hoonhwi
-				if(transaction->STAT_sync)
+				if(transaction->STAT_sync == true)
 				{
 					this->input_streams[transaction->Stream_id]->STAT_SYNC_READ++;
 					this->input_streams[transaction->Stream_id]->STAT_SYNC_READ_BYTE_SAVED += transaction->UserIORequest->Size_in_byte;
@@ -148,7 +148,7 @@ namespace SSD_Components
 				break;
 			case Transaction_Type::WRITE:
 				// *hoonhwi
-				if(transaction->STAT_sync)
+				if(transaction->STAT_sync == true)
 				{
 					this->input_streams[transaction->Stream_id]->STAT_SYNC_WRITE++;
 					this->input_streams[transaction->Stream_id]->STAT_SYNC_WRITE_BYTE_SAVED += transaction->UserIORequest->Size_in_byte;
@@ -183,70 +183,70 @@ namespace SSD_Components
 		return input_streams[stream_id]->STAT_SYNC_WRITE_BYTE_SAVED;
 	}
 
-	uint32_t Input_Stream_Manager_Base::Get_average_read_transaction_turnaround_time(stream_id_type stream_id)//in microseconds
+	double Input_Stream_Manager_Base::Get_average_read_transaction_turnaround_time(stream_id_type stream_id)//in microseconds
 	{
 		if (input_streams[stream_id]->STAT_number_of_read_transactions == 0) {
 			return 0;
 		}
-		return (uint32_t)((input_streams[stream_id]->STAT_sum_of_read_transactions_execution_time + input_streams[stream_id]->STAT_sum_of_read_transactions_transfer_time + input_streams[stream_id]->STAT_sum_of_read_transactions_waiting_time)
+		return (double)((input_streams[stream_id]->STAT_sum_of_read_transactions_execution_time + input_streams[stream_id]->STAT_sum_of_read_transactions_transfer_time + input_streams[stream_id]->STAT_sum_of_read_transactions_waiting_time)
 			/ input_streams[stream_id]->STAT_number_of_read_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 
-	uint32_t Input_Stream_Manager_Base::Get_average_read_transaction_execution_time(stream_id_type stream_id)//in microseconds
+	double Input_Stream_Manager_Base::Get_average_read_transaction_execution_time(stream_id_type stream_id)//in microseconds
 	{
 		if (input_streams[stream_id]->STAT_number_of_read_transactions == 0) {
 			return 0;
 		}
-		return (uint32_t)(input_streams[stream_id]->STAT_sum_of_read_transactions_execution_time / input_streams[stream_id]->STAT_number_of_read_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
+		return (double)(input_streams[stream_id]->STAT_sum_of_read_transactions_execution_time / input_streams[stream_id]->STAT_number_of_read_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 
-	uint32_t Input_Stream_Manager_Base::Get_average_read_transaction_transfer_time(stream_id_type stream_id)//in microseconds
+	double Input_Stream_Manager_Base::Get_average_read_transaction_transfer_time(stream_id_type stream_id)//in microseconds
 	{
 		if (input_streams[stream_id]->STAT_number_of_read_transactions == 0) {
 			return 0;
 		}
-		return (uint32_t)(input_streams[stream_id]->STAT_sum_of_read_transactions_transfer_time / input_streams[stream_id]->STAT_number_of_read_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
+		return (double)(input_streams[stream_id]->STAT_sum_of_read_transactions_transfer_time / input_streams[stream_id]->STAT_number_of_read_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 
-	uint32_t Input_Stream_Manager_Base::Get_average_read_transaction_waiting_time(stream_id_type stream_id)//in microseconds
+	double Input_Stream_Manager_Base::Get_average_read_transaction_waiting_time(stream_id_type stream_id)//in microseconds
 	{
 		if (input_streams[stream_id]->STAT_number_of_read_transactions == 0) {
 			return 0;
 		}
-		return (uint32_t)(input_streams[stream_id]->STAT_sum_of_read_transactions_waiting_time / input_streams[stream_id]->STAT_number_of_read_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
+		return (double)(input_streams[stream_id]->STAT_sum_of_read_transactions_waiting_time / input_streams[stream_id]->STAT_number_of_read_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 
-	uint32_t Input_Stream_Manager_Base::Get_average_write_transaction_turnaround_time(stream_id_type stream_id)//in microseconds
+	double Input_Stream_Manager_Base::Get_average_write_transaction_turnaround_time(stream_id_type stream_id)//in microseconds
 	{
 		if (input_streams[stream_id]->STAT_number_of_write_transactions == 0) {
 			return 0;
 		}
-		return (uint32_t)((input_streams[stream_id]->STAT_sum_of_write_transactions_execution_time + input_streams[stream_id]->STAT_sum_of_write_transactions_transfer_time + input_streams[stream_id]->STAT_sum_of_write_transactions_waiting_time)
+		return (double)((input_streams[stream_id]->STAT_sum_of_write_transactions_execution_time + input_streams[stream_id]->STAT_sum_of_write_transactions_transfer_time + input_streams[stream_id]->STAT_sum_of_write_transactions_waiting_time)
 			/ input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 
-	uint32_t Input_Stream_Manager_Base::Get_average_write_transaction_execution_time(stream_id_type stream_id)//in microseconds
+	double Input_Stream_Manager_Base::Get_average_write_transaction_execution_time(stream_id_type stream_id)//in microseconds
 	{
 		if (input_streams[stream_id]->STAT_number_of_write_transactions == 0) {
 			return 0;
 		}
-		return (uint32_t)(input_streams[stream_id]->STAT_sum_of_write_transactions_execution_time / input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
+		return (double)(input_streams[stream_id]->STAT_sum_of_write_transactions_execution_time / input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 
-	uint32_t Input_Stream_Manager_Base::Get_average_write_transaction_transfer_time(stream_id_type stream_id)//in microseconds
+	double Input_Stream_Manager_Base::Get_average_write_transaction_transfer_time(stream_id_type stream_id)//in microseconds
 	{
 		if (input_streams[stream_id]->STAT_number_of_write_transactions == 0) {
 			return 0;
 		}
-		return (uint32_t)(input_streams[stream_id]->STAT_sum_of_write_transactions_transfer_time / input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
+		return (double)(input_streams[stream_id]->STAT_sum_of_write_transactions_transfer_time / input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 
-	uint32_t Input_Stream_Manager_Base::Get_average_write_transaction_waiting_time(stream_id_type stream_id)//in microseconds
+	double Input_Stream_Manager_Base::Get_average_write_transaction_waiting_time(stream_id_type stream_id)//in microseconds
 	{
 		if (input_streams[stream_id]->STAT_number_of_write_transactions == 0) {
 			return 0;
 		}
-		return (uint32_t)(input_streams[stream_id]->STAT_sum_of_write_transactions_waiting_time / input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
+		return (double)(input_streams[stream_id]->STAT_sum_of_write_transactions_waiting_time / input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 	
 	Request_Fetch_Unit_Base::Request_Fetch_Unit_Base(Host_Interface_Base* host_interface) :

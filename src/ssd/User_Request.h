@@ -8,9 +8,9 @@
 #include "Host_Interface_Defs.h"
 #include "NVM_Transaction.h"
 
-// * hoonhwi
-const bool SHADOW_MAPPING = false;
-const uint32_t SHADOW_FREQUENCY = 64;
+// * hoonhwi; shadow_mapping
+const bool SHADOW_MAPPING = true;
+const uint32_t SHADOW_FREQUENCY = 4;
 // *
 
 namespace SSD_Components
@@ -37,10 +37,6 @@ namespace SSD_Components
 		bool ToBeIgnored;
 		void* IO_command_info;//used to store host I/O command info
 		void* Data;
-
-		// * hoonhwi
-		bool wrsync{ false };
-		// *
 	private:
 		static unsigned int lastId;
 	};

@@ -543,10 +543,6 @@ namespace SSD_Components
 		else return false;
 	}
 
-
-	// * hoon: here
-	uint32_t shadow_index = 0;
-	// *
 	int Address_Mapping_Unit_Page_Level::Translate_lpa_to_ppa_and_dispatch( std::list<NVM_Transaction*>& transactionList, User_Request* user_request, unsigned int* back_pressure_buffer_depth)
 	{
 		int count = 0;
@@ -556,20 +552,6 @@ namespace SSD_Components
 		// checking the possiblity of write request using token value.
 		std::list<NVM_Transaction*>::const_iterator it = transactionList.begin();
 		bool is_write = (((NVM_Transaction_Flash*)(*it))->Type == Transaction_Type::WRITE) ? true : false;
-
-		// * hoon: generate wrsync
-		if(SHADOW_MAPPING)
-		{
-			shadow_index++;
-			if(shadow_index >= SHADOW_FREQUENCY)
-			{
-				shadow_index = 0;
-				//it.stat_tran
-				//STAT_sync = true;
-				user_request->wrsync = true;
-			}
-		}
-		// *
 
 		if ((is_write == true) && (transactionList.size() >= (flush_unit_count))) {
 
@@ -588,7 +570,6 @@ namespace SSD_Components
 
 		//query until flush_unit_count 
 		for (std::list<NVM_Transaction*>::const_iterator it = transactionList.begin(); it != transactionList.end(); ) {
-
 			if (try_query != true) {
 				//iterator should be post-incremented since the iterator may be deleted from list
 				manage_unsuccessful_write((NVM_Transaction_Flash*)*(it++));
@@ -599,7 +580,7 @@ namespace SSD_Components
 				}
 				// * hoonhwi: mapping at below function
 				//query_cmt((NVM_Transaction_Flash*)(*it++));
-				query_cmt((NVM_Transaction_Flash*)(*it++), user_request->wrsync);
+				query_cmt((NVM_Transaction_Flash*)(*it++), (NVM_Transaction_Flash*)(*it)->STAT_sync);
 			}
 
 			if (is_write == true) {
@@ -610,7 +591,7 @@ namespace SSD_Components
 			}
 		}
 
-		if(!user_request->wrsync)
+		if(!(NVM_Transaction_Flash*)(*it)->STAT_sync)
 		{
 			if (try_query) {
 				if (GC_on_for_debug) {

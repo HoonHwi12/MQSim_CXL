@@ -298,7 +298,6 @@ namespace SSD_Components
 
 
 		if (cxl_config_para.dram_mode || dram->isCacheHit(lba)) {// && !dram->is_next_evict_candidate(lba)
-
 			cache_miss = CACHE_HIT;
 			bool rw{ (sqe->Opcode == NVME_READ_OPCODE) ? true : false };
 			CXL_DRAM_ACCESS* dram_request{ new CXL_DRAM_ACCESS{64, lba, rw, CXL_DRAM_EVENTS::CACHE_HIT, Simulator->Time()} };
@@ -770,6 +769,9 @@ namespace SSD_Components
 		//}
 	}
 
+	// * hoon: here
+	uint32_t shadow_index = 0;
+	// *
 	void Input_Stream_Manager_CXL::segment_user_request(User_Request* user_request)
 	{
 		LHA_type lsa = user_request->Start_LBA;
@@ -824,6 +826,27 @@ namespace SSD_Components
 			if (user_request->Type == UserRequestType::READ) {
 				NVM_Transaction_Flash_RD* transaction = new NVM_Transaction_Flash_RD(Transaction_Source_Type::USERIO, user_request->Stream_id,
 					transaction_size * SECTOR_SIZE_IN_BYTE, lpa, NO_PPA, user_request, 0, access_status_bitmap, CurrentTimeStamp);
+				// * hoon: transaction push back here
+				// * hoon: generate wrsync
+				if(SHADOW_MAPPING)
+				{
+					shadow_index++;
+					if(shadow_index >= SHADOW_FREQUENCY)
+					{
+						shadow_index = 0;
+						transaction->STAT_sync = true;
+					}
+					else
+					{
+						transaction->STAT_sync = false;
+					}
+				}
+				else
+				{
+					transaction->STAT_sync = false;
+				}
+				// *
+				
 				user_request->Transaction_list.push_back(transaction);
 				input_streams[user_request->Stream_id]->STAT_number_of_read_transactions++;
 			}
@@ -831,6 +854,26 @@ namespace SSD_Components
 				//cout << user_request->Start_LBA << endl;
 				NVM_Transaction_Flash_WR* transaction = new NVM_Transaction_Flash_WR(Transaction_Source_Type::USERIO, user_request->Stream_id,
 					transaction_size * SECTOR_SIZE_IN_BYTE, lpa, user_request, 0, access_status_bitmap, CurrentTimeStamp);
+				// * hoon: transaction push back here
+				// * hoon: generate wrsync
+				if(SHADOW_MAPPING)
+				{
+					shadow_index++;
+					if(shadow_index >= SHADOW_FREQUENCY)
+					{
+						shadow_index = 0;
+						transaction->STAT_sync = true;
+					}
+					else
+					{
+						transaction->STAT_sync = false;
+					}
+				}
+				else
+				{
+					transaction->STAT_sync = false;
+				}
+				// *				
 				user_request->Transaction_list.push_back(transaction);
 				input_streams[user_request->Stream_id]->STAT_number_of_write_transactions++;
 			}
@@ -942,7 +985,6 @@ namespace SSD_Components
 			if (hi->cxl_man->flash_back_end_access_count >= hi->cxl_man->flash_back_end_queue_size) {
 				hi->Notify_CXL_Host_flash_full();
 			}
-
 			((Input_Stream_Manager_CXL*)(hi->input_stream_manager))->Handle_new_arrived_request(new_reqeust);
 			break;
 		}
@@ -976,7 +1018,7 @@ namespace SSD_Components
 		dma_list.push_back(dma_req_item);
 
 		Submission_Queue_Entry* sqe = (Submission_Queue_Entry*)request->IO_command_info;
-
+		
 		Process_pcie_read_message(0, NULL, 4096);//immediate send data
 
 		//host_interface->Send_read_message_to_host((sqe->PRP_entry_2 << 31) | sqe->PRP_entry_1, request->Size_in_byte);

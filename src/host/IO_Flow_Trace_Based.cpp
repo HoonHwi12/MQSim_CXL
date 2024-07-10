@@ -5,7 +5,6 @@
 
 // * hoonhwi
 int testbit = 0;
-uint64_t buffer_cache_time =0;
 uint64_t buffer_cache_write_time = 0;
 uint64_t buffer_cache_read_time = 0;
 PageTable::PageTable() {}
@@ -392,12 +391,12 @@ namespace Host_Components
 						// if buffer is full, flush buffer cache
 						if(cxl_pcie->write_buffer_cnt >= MAX_BUFFER_CACHE_SIZE)
 						{
-							// PRINT_MESSAGE("sync, write_buffer_cnt: " << cxl_pcie->write_buffer_cnt);
+							//PRINT_MESSAGE("sync, write_buffer_cnt: " << cxl_pcie->write_buffer_cnt);
 							BufferCacheEntry temp_cache;
 							uint16_t i = 0;
 							while(!buffercache.empty())
 							{
-								Host_IO_Request* temp_request = new Host_IO_Request;;
+								Host_IO_Request* temp_request = new Host_IO_Request;
 								temp_cache = buffercache.select_one();
 								temp_request->Arrival_time = Simulator->Time();
 								temp_request->Enqueue_time = Simulator->Time();
