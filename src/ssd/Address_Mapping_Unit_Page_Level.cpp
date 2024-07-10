@@ -564,6 +564,8 @@ namespace SSD_Components
 			if(shadow_index >= SHADOW_FREQUENCY)
 			{
 				shadow_index = 0;
+				it.stat_tran
+				STAT_sync = true;
 				user_request->wrsync = true;
 			}
 		}
@@ -809,6 +811,14 @@ namespace SSD_Components
 				Stats::writeTR_CMT_hits_per_stream[stream_id]++;
 			}
 			//
+			// *
+			// if (translate_lpa_to_ppa(stream_id, transaction)) {
+			// 	return true;
+			// } else {
+			// 	mange_unsuccessful_translation(transaction);
+			// 	return false;
+			// }	
+			// *
 
 			// * hoonhwi
 			if(!wrsync)
@@ -941,10 +951,12 @@ namespace SSD_Components
 			}
 			transaction->PPA = ppa;
 			Convert_ppa_to_address(transaction->PPA, transaction->Address);
-			//block_manager->Read_transaction_issued(transaction->Address);
+			block_manager->Read_transaction_issued(transaction->Address);
+			
+			// hoon: need to be fixed later
 			//domains[streamID]->Update_mapping_info(ideal_mapping_table, streamID, transaction->LPA, transaction->PPA, transaction->read_sectors_bitmap);
 			transaction->Physical_address_determined = true;
-			
+
 			return true;
 		} else {//This is a write transaction	
 

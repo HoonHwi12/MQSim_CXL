@@ -9,13 +9,15 @@
 
 extern int testbit;
 
-const bool PAGE_TABLE_ON = false;
+const bool PAGE_TABLE_ON = true;
 const size_t PAGE_SIZE = 4096;
-const size_t MAX_PAGE_TABLE_SIZE = 256;
+const size_t MAX_PAGE_TABLE_SIZE = 64;
 const size_t MAX_BUFFER_CACHE_SIZE = 64;
 const size_t buffer_cache_time_coeff = 100000;
 
 extern uint64_t buffer_cache_time;
+extern uint64_t buffer_cache_read_time;
+extern uint64_t buffer_cache_write_time;
 
 struct PageTableEntry {
 	size_t virtualPageNumber;
@@ -41,7 +43,7 @@ private:
 public:
 	PageTable();
     int64_t translate_pageTable(size_t virtualAddress);
-    void map_pageTable(size_t virtualPageNumber, size_t physicalFrameNumber);
+    int map_pageTable(size_t virtualPageNumber, size_t physicalFrameNumber);
     void unmap_pageTable(size_t virtualPageNumber);
 };
 class BufferCache {

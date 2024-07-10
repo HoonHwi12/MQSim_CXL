@@ -1,9 +1,4 @@
-#include"CXL_Config.h"
-
-
-
-
-
+#include "CXL_Config.h"
 
 void cxl_config::readConfigFile() {
 

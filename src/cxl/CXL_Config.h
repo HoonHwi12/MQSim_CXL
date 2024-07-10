@@ -30,7 +30,6 @@ typedef enum class prefetchertype {
 	feedback_direct
 }prefetchertype;
 
-
 class cxl_config {
 public:
 	uint64_t dram_size;

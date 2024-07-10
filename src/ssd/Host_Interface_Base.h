@@ -42,6 +42,7 @@ namespace SSD_Components
 		unsigned int STAT_number_of_write_transactions;
 		sim_time_type STAT_sum_of_read_transactions_execution_time, STAT_sum_of_read_transactions_transfer_time, STAT_sum_of_read_transactions_waiting_time;
 		sim_time_type STAT_sum_of_write_transactions_execution_time, STAT_sum_of_write_transactions_transfer_time, STAT_sum_of_write_transactions_waiting_time;
+		sim_time_type STAT_SYNC_READ, STAT_SYNC_WRITE, STAT_SYNC_WRITE_BYTE_SAVED, STAT_SYNC_READ_BYTE_SAVED;
 	};
 
 	class Input_Stream_Manager_Base
@@ -58,6 +59,12 @@ namespace SSD_Components
 		virtual void Handle_arrived_write_data(User_Request* request) = 0;
 		virtual void Handle_serviced_request(User_Request* request) = 0;
 		void Update_transaction_statistics(NVM_Transaction* transaction);
+		// *hoonhwi
+		uint32_t Get_stat_sync_write(stream_id_type stream_id);
+		uint32_t Get_stat_sync_read(stream_id_type stream_id);
+		uint32_t Get_stat_sync_write_byte(stream_id_type stream_id);
+		uint32_t Get_stat_sync_read_byte(stream_id_type stream_id);
+		// 
 		uint32_t Get_average_read_transaction_turnaround_time(stream_id_type stream_id);//in microseconds
 		uint32_t Get_average_read_transaction_execution_time(stream_id_type stream_id);//in microseconds
 		uint32_t Get_average_read_transaction_transfer_time(stream_id_type stream_id);//in microseconds

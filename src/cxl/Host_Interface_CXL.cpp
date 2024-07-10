@@ -481,7 +481,7 @@ namespace SSD_Components
 			if (current_progress * 100 - perc > 1) {
 				perc += 1;
 				uint8_t number_of_bars{ static_cast<uint8_t> (perc / 4) };
-				std::cout << "Simulation progress: [";
+				std::cout << "Host Interface Simulation progress: [";
 				for (auto i = 0; i < number_of_bars; i++) {
 					std::cout << "=";
 				}
@@ -492,7 +492,7 @@ namespace SSD_Components
 			}
 
 			if (total_number_of_accesses == cxl_config_para.total_number_of_requets) {
-				std::cout << "Simulation progress: [";
+				std::cout << "Host Interface Simulation progress: [";
 				for (auto i = 0; i < 25; i++) {
 					std::cout << "=";
 				}
@@ -504,8 +504,6 @@ namespace SSD_Components
 			}
 			return;
 		}
-
-
 
 		if (sqe->Opcode == NVME_WRITE_OPCODE) {//flush done
 			if (flash_back_end_access_count >= flash_back_end_queue_size) {
@@ -1175,6 +1173,24 @@ namespace SSD_Components
 			attr = "Stream_ID";
 			val = std::to_string(stream_id);
 			xmlwriter.Write_attribute_string(attr, val);
+
+			// * hoonhwi
+			attr = "Num Sync Read Command";
+			val = std::to_string(input_stream_manager->Get_stat_sync_read(stream_id));
+			xmlwriter.Write_attribute_string(attr, val);
+
+			attr = "Num Sync Write Command";
+			val = std::to_string(input_stream_manager->Get_stat_sync_write(stream_id));
+			xmlwriter.Write_attribute_string(attr, val);
+
+			attr = "Byte saved through read sync";
+			val = std::to_string(input_stream_manager->Get_stat_sync_read_byte(stream_id));
+			xmlwriter.Write_attribute_string(attr, val);
+
+			attr = "Byte saved through write sync";
+			val = std::to_string(input_stream_manager->Get_stat_sync_write_byte(stream_id));
+			xmlwriter.Write_attribute_string(attr, val);
+			// *
 
 			attr = "Average_Read_Transaction_Turnaround_Time";
 			val = std::to_string(input_stream_manager->Get_average_read_transaction_turnaround_time(stream_id));

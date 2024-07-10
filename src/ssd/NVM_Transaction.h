@@ -28,6 +28,8 @@ namespace SSD_Components
 		/* Used to calculate service time and transfer time for a normal read/program operation used to respond to the host IORequests.
 		In other words, these variables are not important if FlashTransactions is used for garbage collection.*/
 		sim_time_type STAT_execution_time, STAT_transfer_time;
+		// *hoonhwi
+		bool STAT_sync;
 	};
 }
 

@@ -21,7 +21,7 @@ namespace Host_Components
 		bool enabled_logging, sim_time_type logging_period, std::string logging_file_path) : 
 		MQSimEngine::Sim_Object(name), flow_id(flow_id), start_lsa_on_device(start_lsa_on_device), end_lsa_on_device(end_lsa_on_device), io_queue_id(io_queue_id),
 		priority_class(priority_class), stop_time(stop_time), initial_occupancy_ratio(initial_occupancy_ratio), total_requests_to_be_generated(total_requets_to_be_generated), SSD_device_type(SSD_device_type), pcie_root_complex(pcie_root_complex), sata_hba(sata_hba),
-		STAT_BUFFER_CACHE_MAP(0), STAT_PAGE_CACHE_HIT(0),
+		STAT_BUFFER_CACHE_MAP(0), STAT_BUFFER_CACHE_HIT(0), STAT_PAGE_CACHE_HIT(0), STAT_PAGE_CACHE_EVICT(0),
 		STAT_generated_request_count(0), STAT_generated_read_request_count(0), STAT_generated_write_request_count(0),
 		STAT_ignored_request_count(0),
 		STAT_serviced_request_count(0), STAT_serviced_read_request_count(0), STAT_serviced_write_request_count(0),
@@ -563,8 +563,16 @@ namespace Host_Components
 		val = std::to_string((double)STAT_BUFFER_CACHE_MAP);
 		xmlwriter.Write_attribute_string(attr, val);
 
+		attr = "BUFFER_CACHE_HIT";
+		val = std::to_string((double)STAT_BUFFER_CACHE_HIT);
+		xmlwriter.Write_attribute_string(attr, val);
+
 		attr = "PAGE_CACHE_HIT";
 		val = std::to_string((double)STAT_PAGE_CACHE_HIT);
+		xmlwriter.Write_attribute_string(attr, val);
+
+		attr = "PAGE_CACHE_EVICT";
+		val = std::to_string((double)STAT_PAGE_CACHE_EVICT);
 		xmlwriter.Write_attribute_string(attr, val);
 		// *
 

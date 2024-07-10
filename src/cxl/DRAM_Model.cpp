@@ -116,6 +116,9 @@ namespace SSD_Components {
 			delete current_access;
 			break;
 		case CXL_DRAM_EVENTS::PREFETCH_READY:
+			// *hoonhwi
+			number_of_accesses++;
+			// *
 			//flash_read_count++;
 			//outputf.of << "Finished_time " << Simulator->Time() << " Starting_time " << current_access->initiate_time << " Prefetch_ready_at " << current_access->lba << std::endl;
 			prefetch_amount++;
@@ -180,7 +183,7 @@ namespace SSD_Components {
 			perc += 1;
 			uint8_t number_of_bars{ static_cast<uint8_t> (perc / 4) };
 
-			std::cout << "Simulation progress: [";
+			std::cout << "DRAM Model Simulation progress: [";
 			for (auto i = 0; i < number_of_bars; i++) {
 				std::cout << "=";
 			}
@@ -192,7 +195,7 @@ namespace SSD_Components {
 		}
 		if (number_of_accesses == total_number_of_requests && !results_printed) {
 			results_printed = 1;
-			std::cout << "Simulation progress: [";
+			std::cout << "DRAM Model Simulation progress: [";
 			for (auto i = 0; i < 25; i++) {
 				std::cout << "=";
 			}

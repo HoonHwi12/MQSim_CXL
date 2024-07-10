@@ -5,7 +5,9 @@
 
 // * hoonhwi
 int testbit = 0;
-uint64_t buffer_cache_time = 0;
+uint64_t buffer_cache_time =0;
+uint64_t buffer_cache_write_time = 0;
+uint64_t buffer_cache_read_time = 0;
 PageTable::PageTable() {}
 PageTable pagetable;
 BufferCache::BufferCache() {}
@@ -31,13 +33,13 @@ int64_t PageTable::translate_pageTable(size_t virtualAddress) {
 	}
 	return -1;
 }
-void PageTable::map_pageTable(size_t virtualPageNumber, size_t physicalFrameNumber) {
+int PageTable::map_pageTable(size_t virtualPageNumber, size_t physicalFrameNumber) {
  	for (size_t i = 0; i < pageTable.size(); ++i) {
         if (pageTable[i].virtualPageNumber == virtualPageNumber) {
             pageTable[i].frameNumber = physicalFrameNumber;
             pageTable[i].valid = true;
             updateLRU(i);
-            return;
+            return 0;
         }
     }
 	if (pageTable.size() >= MAX_PAGE_TABLE_SIZE) {
@@ -46,10 +48,12 @@ void PageTable::map_pageTable(size_t virtualPageNumber, size_t physicalFrameNumb
         lruQueue.pop_front();
         pageTable[lruIndex] = { virtualPageNumber, physicalFrameNumber, true };
         updateLRU(lruIndex);
+		return 1;
     } else {
 		// PRINT_MESSAGE("pageTable size: " << pageTable.size());
         pageTable.push_back({ virtualPageNumber, physicalFrameNumber, true });
         updateLRU(pageTable.size() - 1);
+		return 0;
     }
 }
 void PageTable::unmap_pageTable(size_t virtualPageNumber) {
@@ -297,6 +301,7 @@ namespace Host_Components
 
 		trace_file.close();
 		PRINT_MESSAGE("Trace file: " << trace_file_path << " seems healthy");
+		PRINT_MESSAGE("total requests in file: " << total_requests_in_file);
 
 		if (total_replay_no == 1) {
 			total_requests_to_be_generated = (int)(((double)percentage_to_be_simulated / 100) * total_requests_in_file);
@@ -330,6 +335,7 @@ namespace Host_Components
 			//cout << "skipped feeding" << skipped_feeding << endl;
 			return;
 		}
+
 		Host_IO_Request* request = Generate_next_request();
 		if (request != NULL) {
 			//* hoonhwi
@@ -344,12 +350,15 @@ namespace Host_Components
 					global_io_flow_base->STAT_transferred_bytes_total += request->LBA_count * SECTOR_SIZE_IN_BYTE;
 					global_io_flow_base->STAT_serviced_read_request_count++;
 					global_io_flow_base->STAT_transferred_bytes_read += request->LBA_count * SECTOR_SIZE_IN_BYTE;
-					buffer_cache_time += buffer_cache_time_coeff;
+					buffer_cache_read_time += buffer_cache_time_coeff;
 				}
 				else
 				{
 					// PRINT_MESSAGE("page fault Address: " << request->Start_LBA);
-					if(PAGE_TABLE_ON) pagetable.map_pageTable(request->Start_LBA, request->Start_LBA); // add to pagetable, address need to be fixed
+					if(PAGE_TABLE_ON)
+					{
+						global_io_flow_base->STAT_PAGE_CACHE_EVICT += pagetable.map_pageTable(request->Start_LBA, request->Start_LBA); // add to pagetable, address need to be fixed
+					}
 
 					//Submit_io_request(request);
 					cxl_pcie->requests_queue.push_back(request);
@@ -363,12 +372,13 @@ namespace Host_Components
 				if(PAGE_TABLE_ON && buffercache.update_dirty(*request).valid) // write buffer hit
 				{
 					// PRINT_MESSAGE("update dirty buffer cache");
+					global_io_flow_base->STAT_BUFFER_CACHE_HIT++;
 					global_io_flow_base->STAT_serviced_request_count++;
 					global_io_flow_base->STAT_serviced_request_count_short_term++;
 					global_io_flow_base->STAT_transferred_bytes_total += request->LBA_count * SECTOR_SIZE_IN_BYTE;
 					global_io_flow_base->STAT_serviced_write_request_count++;
 					global_io_flow_base->STAT_transferred_bytes_write += request->LBA_count * SECTOR_SIZE_IN_BYTE;
-					buffer_cache_time += buffer_cache_time_coeff;
+					buffer_cache_write_time += buffer_cache_time_coeff;				
 				}
 				else
 				{
@@ -379,6 +389,7 @@ namespace Host_Components
 						global_io_flow_base->STAT_BUFFER_CACHE_MAP++;
 						cxl_pcie->write_buffer_cnt++;
 
+						// if buffer is full, flush buffer cache
 						if(cxl_pcie->write_buffer_cnt >= MAX_BUFFER_CACHE_SIZE)
 						{
 							// PRINT_MESSAGE("sync, write_buffer_cnt: " << cxl_pcie->write_buffer_cnt);

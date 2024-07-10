@@ -97,7 +97,9 @@ namespace Host_Components
 		unsigned int total_requests_to_be_generated;//If stop_time is zero, then the flow stops generating request when the number of generated requests is equal to total_req_count
 		//Variables used to collect statistics
 		uint64_t STAT_BUFFER_CACHE_MAP;
+		uint64_t STAT_BUFFER_CACHE_HIT;
 		uint64_t STAT_PAGE_CACHE_HIT;
+		uint64_t STAT_PAGE_CACHE_EVICT;
 
 		unsigned int STAT_generated_request_count_before_PRECOND; //DATE22
 		unsigned int STAT_generated_request_count_before_GC; //DATE22
