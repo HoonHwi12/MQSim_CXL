@@ -565,7 +565,7 @@ namespace SSD_Components
 			{
 				shadow_index = 0;
 				//it.stat_tran
-				STAT_sync = true;
+				//STAT_sync = true;
 				user_request->wrsync = true;
 			}
 		}
