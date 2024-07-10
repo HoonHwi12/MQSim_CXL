@@ -564,7 +564,7 @@ namespace SSD_Components
 			if(shadow_index >= SHADOW_FREQUENCY)
 			{
 				shadow_index = 0;
-				it.stat_tran
+				//it.stat_tran
 				STAT_sync = true;
 				user_request->wrsync = true;
 			}

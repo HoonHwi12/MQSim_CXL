@@ -135,7 +135,6 @@ namespace SSD_Components
 				// *hoonhwi
 				if(transaction->STAT_sync)
 				{
-					PRINT_MESSAGE("rrr");
 					this->input_streams[transaction->Stream_id]->STAT_SYNC_READ++;
 					this->input_streams[transaction->Stream_id]->STAT_SYNC_READ_BYTE_SAVED += transaction->UserIORequest->Size_in_byte;
 
