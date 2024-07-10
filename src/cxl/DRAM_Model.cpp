@@ -2,6 +2,10 @@
 
 #include <fstream>
 
+// *hoonhwi
+#include "Host_Buffer_Cache.h"
+// *
+
 //ofstream ofi{ "cache_wait_time.txt" };
 //ofstream ofi2{ "Flash_read_time.txt" };
 //ofstream ofi3{ "Serviced_Request_Amount.txt" };
@@ -178,7 +182,8 @@ namespace SSD_Components {
 		//ofi << totalcount << endl;
 		//number_of_accesses++;
 
-		float current_progress{ static_cast<float>(number_of_accesses) / static_cast<float>(total_number_of_requests) };
+		uint64_t total_request = number_of_accesses + Host_Components::global_io_flow_base->STAT_PAGE_CACHE_HIT;
+		float current_progress{ static_cast<float>(total_request) / static_cast<float>(total_number_of_requests) };
 		if (current_progress<1 && current_progress * 100 - perc > 1) {
 			perc += 1;
 			uint8_t number_of_bars{ static_cast<uint8_t> (perc / 4) };
@@ -191,15 +196,15 @@ namespace SSD_Components {
 				std::cout << " ";
 			}
 
-			std::cout << "] " << perc << "%   Cache Hit Count: " << cache_hit_count << "   Prefetch amount: "<< prefetch_amount << "   number_of_accesses: " << number_of_accesses<< "  total_number_of_requests: " << total_number_of_requests << endl;
+			std::cout << "] " << perc << "%   Cache Hit Count: " << cache_hit_count << "   Prefetch amount: "<< prefetch_amount << "   total_request: " << total_request << "  total_number_of_requests: " << total_number_of_requests << endl;
 		}
-		if (number_of_accesses == total_number_of_requests && !results_printed) {
+		if (total_request >= (total_number_of_requests - MAX_BUFFER_CACHE_SIZE) && !results_printed) {
 			results_printed = 1;
 			std::cout << "DRAM Model Simulation progress: [";
 			for (auto i = 0; i < 25; i++) {
 				std::cout << "=";
 			}
-			of_overall<< "number_of_accesses : " << number_of_accesses << "    total_number_of_requests: " << total_number_of_requests << std::endl;
+			of_overall<< "total_request : " << total_request << "    total_number_of_requests: " << total_number_of_requests << std::endl;
 
 			std::cout << "] " << 100 << "%    Cache Hit Count: " << cache_hit_count << "   Prefetch amount: " << prefetch_amount << std::endl;
 			of_overall<< "Cache Hit Count: " << cache_hit_count << "   Prefetch amount: " << prefetch_amount << std::endl;

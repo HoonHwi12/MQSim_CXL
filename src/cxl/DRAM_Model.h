@@ -12,6 +12,9 @@
 #include "../ssd/Host_Interface_Base.h"
 #include "OutputLog.h"
 
+// *hoonhwi
+#include "IO_Flow_Base.h"
+// *
 
 namespace SSD_Components {
 
@@ -84,9 +87,6 @@ namespace SSD_Components {
 		std::map<sim_time_type, list<CXL_DRAM_ACCESS*>>* list_of_current_access{ NULL };
 		uint64_t num_working_request{ 0 };
 		uint64_t num_chan{ 1 };
-
-		
-
 	};
 }
 

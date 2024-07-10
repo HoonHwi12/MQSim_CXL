@@ -346,7 +346,7 @@ namespace Host_Components
 			return;
 		}
 		// *		
-
+extern Host_Components::IO_Flow_Base* global_io_flow_base;
 		Host_IO_Request* request = Generate_next_request();
 		if (request != NULL) {
 			//* hoonhwi

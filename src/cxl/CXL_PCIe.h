@@ -74,6 +74,7 @@ namespace Host_Components {
 
 		uint64_t device_dram_avail{ 1 };
 		uint64_t flash_device_avail{ 1 };
+		
 	};
 }
 
