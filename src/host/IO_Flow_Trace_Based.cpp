@@ -4,6 +4,7 @@
 #include "../utils/DistributionTypes.h"
 
 // * hoonhwi
+#include <sys/stat.h>
 int testbit = 0;
 uint64_t buffer_cache_write_time = 0;
 uint64_t buffer_cache_read_time = 0;
@@ -334,6 +335,17 @@ namespace Host_Components
 			//cout << "skipped feeding" << skipped_feeding << endl;
 			return;
 		}
+
+		// *hoonhwi
+		struct stat buffer;
+		if (stat("testcomplete", &buffer) == 0) {
+			if (std::remove("testcomplete") != 0) {
+				PRINT_MESSAGE("Error: exit test failed");
+			}
+
+			return;
+		}
+		// *		
 
 		Host_IO_Request* request = Generate_next_request();
 		if (request != NULL) {

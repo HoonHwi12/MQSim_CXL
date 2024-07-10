@@ -216,6 +216,14 @@ namespace SSD_Components {
 			//std::cout << "Flush count: " << hi->Get_flush_count() << endl;
 			//std::cout << "Request ends at timestamp: " << static_cast<float>(Simulator->Time()) / 1000000000 << " s" << endl;
 			hi->print_prefetch_info();
+
+			// *hoonhwi: inform test complete
+			std::ofstream outfile("testcomplete");
+			if (!outfile) {
+				PRINT_MESSAGE("Test doest not successfully completed");
+			}
+			outfile.close();
+			// *
 		}
 		//if (number_of_accesses % 43000000 == 0) {
 		//	of_overall << "Sample: "<< number_of_accesses / 43000000 << endl;
