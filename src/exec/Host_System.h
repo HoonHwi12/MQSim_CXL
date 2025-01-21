@@ -34,6 +34,7 @@ private:
 	Host_Components::PCIe_Switch* PCIe_switch;
 	Host_Components::SATA_HBA* SATA_hba;
 	Host_Components::CXL_PCIe* cxl_pcie;
+	Host_Components::Host_Buffer* host_buffer;
 	std::vector<Host_Components::IO_Flow_Base*> IO_flows;
 	SSD_Device* ssd_device;
 	std::vector<Utils::Workload_Statistics*> get_workloads_statistics();

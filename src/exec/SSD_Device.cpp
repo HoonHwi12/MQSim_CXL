@@ -176,6 +176,7 @@ SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Par
 			std::vector<std::vector<flash_die_ID_type>> flow_die_id_assignments;
 			std::vector<std::vector<flash_plane_ID_type>> flow_plane_id_assignments;
 			unsigned int stream_count = 0;
+
 			for (unsigned int i = 0; i < io_flows->size(); i++) {
 				switch (parameters->HostInterface_Type) {
 					case HostInterface_Types::SATA: {
@@ -256,6 +257,7 @@ SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Par
 				default:
 					throw std::invalid_argument("No implementation is available fo the secified address mapping strategy");
 			}
+
 			Simulator->AddObject(amu);
 			ftl->Address_Mapping_Unit = amu;
 

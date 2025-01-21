@@ -186,9 +186,12 @@ namespace SSD_Components
 		bool request_mapping_entry(const stream_id_type streamID, const LPA_type lpn);
 		static void handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction);
 
-		// * hoonhwi
+		// *hoonhwi
+		void cxl_write_mapping(stream_id_type streamID, NVM_Transaction_Flash* transaction);
+		void cxl_read_mapping(stream_id_type streamID, NVM_Transaction_Flash* transaction);		
 		bool translate_sync_lpa_to_ppa(stream_id_type streamID, NVM_Transaction_Flash* transaction);
-		// 
+		// *
+
 		bool translate_lpa_to_ppa(stream_id_type streamID, NVM_Transaction_Flash* transaction);
 		std::set<NVM_Transaction_Flash_WR*>**** Write_transactions_for_overfull_planes;
 		std::list<NVM_Transaction_Flash_WR*> Write_transactions_for_overfull;

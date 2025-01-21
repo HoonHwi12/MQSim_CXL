@@ -7,14 +7,28 @@
 #include <algorithm>
 #include "Host_IO_Request.h"
 
+#include <list>
+#include <cstdint>
+#include "../sim/Sim_Defs.h"
+#include "../sim/Sim_Object.h"
+#include "../sim/Sim_Event.h"
+#include"../sim/Engine.h"
+#include "../host/IO_Flow_Base.h"
+#include "../host/PCIe_Switch.h"
+#include "../ssd/Host_Interface_Defs.h"
+
 extern int testbit;
 
 // * hoonhwi; buffer cache
-const bool PAGE_TABLE_ON = true;
+extern bool PAGE_TABLE_ON;
 const size_t PAGE_SIZE = 4096;
-const size_t MAX_PAGE_TABLE_SIZE = 64;
+const size_t CACHE_LINE_SIZE = 64; // byte
+extern size_t DIMM_MEMORY_SIZE_KB;
+const size_t KB = 1024;
+const size_t MB = 1024*1024;
+extern size_t MAX_PAGE_TABLE_ENTRY_SIZE;
 const size_t MAX_BUFFER_CACHE_SIZE = 64;
-const size_t buffer_cache_time_coeff = 1000;
+const size_t buffer_cache_time_coeff = 1;
 
 extern sim_time_type buffer_cache_read_time;
 extern sim_time_type buffer_cache_write_time;
@@ -37,10 +51,11 @@ struct BufferCacheEntry {
 };
 class PageTable {
 private:
-    std::vector<PageTableEntry> pageTable;
 	std::deque<size_t> lruQueue;
 	void updateLRU(size_t index);
+	std::unordered_map<size_t, size_t> pageMap;
 public:
+	std::vector<PageTableEntry> pageTable;
 	PageTable();
     int64_t translate_pageTable(size_t virtualAddress);
     int map_pageTable(size_t virtualPageNumber, size_t physicalFrameNumber);
@@ -60,5 +75,13 @@ public:
     void map_bufferCache(Host_Components::Host_IO_Request request);
     void unmap_bufferCache(Host_Components::Host_IO_Request request);	
 };
-
+namespace Host_Components {
+	class Host_Buffer :public MQSimEngine::Sim_Object {
+	public:
+		Host_Buffer(const sim_object_id_type& id);
+		void Execute_simulator_event(MQSimEngine::Sim_Event* event);
+		void Start_simulation();
+		void Validate_simulation_config();
+	};
+}
 // *

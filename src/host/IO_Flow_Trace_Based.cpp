@@ -18,50 +18,53 @@ void PageTable::updateLRU(size_t index) {
     lruQueue.push_back(index);
 }
 int64_t PageTable::translate_pageTable(size_t virtualAddress) {
-	size_t virtualPageNumber = virtualAddress; // / PAGE_SIZE;
-	size_t offset = 0; // virtualAddress % PAGE_SIZE;
+    size_t virtualPageNumber = virtualAddress / PAGE_SIZE;
+    size_t offset = virtualAddress % PAGE_SIZE;
 
-	size_t index = 0;
-	while(index < pageTable.size())
-	{
-		if(pageTable[index].valid && pageTable[index].virtualPageNumber == virtualPageNumber)
-		{
-			updateLRU(index);
-			return pageTable[index].frameNumber + offset; // pageTable[index].frameNumber * PAGE_SIZE + offset;
-		}
-		index++;
-	}
-	return -1;
-}
-int PageTable::map_pageTable(size_t virtualPageNumber, size_t physicalFrameNumber) {
- 	for (size_t i = 0; i < pageTable.size(); ++i) {
-        if (pageTable[i].virtualPageNumber == virtualPageNumber) {
-            pageTable[i].frameNumber = physicalFrameNumber;
-            pageTable[i].valid = true;
-            updateLRU(i);
-            return 0;
+    auto it = pageMap.find(virtualPageNumber);
+    if (it != pageMap.end()) {
+        size_t index = it->second;
+        if (pageTable[index].valid) {
+            updateLRU(index);
+            return ((pageTable[index].frameNumber * PAGE_SIZE) + offset);
         }
     }
-	if (pageTable.size() >= MAX_PAGE_TABLE_SIZE) {
+    return -1;
+}
+int PageTable::map_pageTable(size_t virtualAddress, size_t physicalAddress) {
+	size_t virtualPageNumber = virtualAddress / PAGE_SIZE;
+	size_t physicalPageNumber = physicalAddress / PAGE_SIZE;
+    size_t offset = virtualAddress % PAGE_SIZE;
+	auto it = pageMap.find(virtualPageNumber);
+ 	if (it != pageMap.end()) {
+        size_t index = it->second;
+        pageTable[index].frameNumber = physicalPageNumber;
+        pageTable[index].valid = true;
+        updateLRU(index);
+        return 0;
+    }
+ 	if (pageTable.size() >= MAX_PAGE_TABLE_ENTRY_SIZE) {
         size_t lruIndex = lruQueue.front();
-		// PRINT_MESSAGE("lru pop front: " << lruQueue[0]);
         lruQueue.pop_front();
-        pageTable[lruIndex] = { virtualPageNumber, physicalFrameNumber, true };
+        pageMap.erase(pageTable[lruIndex].virtualPageNumber);
+        pageTable[lruIndex] = { virtualPageNumber, physicalPageNumber, true };
+        pageMap[virtualPageNumber] = lruIndex;
         updateLRU(lruIndex);
-		return 1;
+        return 1;
     } else {
-		// PRINT_MESSAGE("pageTable size: " << pageTable.size());
-        pageTable.push_back({ virtualPageNumber, physicalFrameNumber, true });
-        updateLRU(pageTable.size() - 1);
-		return 0;
+        size_t newIndex = pageTable.size();
+        pageTable.push_back({ virtualPageNumber, physicalPageNumber, true });
+        pageMap[virtualPageNumber] = newIndex;
+        updateLRU(newIndex);
+        return 0;
     }
 }
 void PageTable::unmap_pageTable(size_t virtualPageNumber) {
-    for (auto& entry : pageTable) {
-        if (entry.virtualPageNumber == virtualPageNumber) {
-            entry.valid = false;
-            return;
-        }
+    auto it = pageMap.find(virtualPageNumber);
+    if (it != pageMap.end()) {
+        size_t index = it->second;
+        pageTable[index].valid = false;
+        pageMap.erase(it);
     }
 }
 void BufferCache::updateLRU(size_t index) {
@@ -149,10 +152,10 @@ namespace Host_Components
 		uint16_t nvme_submission_queue_size, uint16_t nvme_completion_queue_size, IO_Flow_Priority_Class priority_class, double initial_occupancy_ratio,
 		std::string trace_file_path, Trace_Time_Unit time_unit, unsigned int total_replay_count, unsigned int percentage_to_be_simulated,
 		HostInterface_Types SSD_device_type, PCIe_Root_Complex* pcie_root_complex, SATA_HBA* sata_hba,
-		bool enabled_logging, sim_time_type logging_period, std::string logging_file_path, CXL_PCIe* cxl_pcie) :
+		bool enabled_logging, sim_time_type logging_period, std::string logging_file_path, CXL_PCIe* cxl_pcie, Host_Buffer* host_buffer) :
 		IO_Flow_Base(name, flow_id, start_lsa_on_device, end_lsa_on_device, io_queue_id, nvme_submission_queue_size, nvme_completion_queue_size, priority_class, 0, initial_occupancy_ratio, 0, SSD_device_type, pcie_root_complex, sata_hba, enabled_logging, logging_period, logging_file_path),
 		trace_file_path(trace_file_path), time_unit(time_unit), total_replay_no(total_replay_count), percentage_to_be_simulated(percentage_to_be_simulated),
-		total_requests_in_file(0), time_offset(0), cxl_pcie(cxl_pcie)
+		total_requests_in_file(0), time_offset(0), cxl_pcie(cxl_pcie), host_buffer(host_buffer)
 	{
 		if (percentage_to_be_simulated > 100) {
 			percentage_to_be_simulated = 100;
@@ -325,6 +328,7 @@ namespace Host_Components
 	{
 	}
 
+	//ofstream ofrepeated_access{ "./Results/buffer_miss_lba.txt" };
 	void IO_Flow_Trace_Based::Execute_simulator_event(MQSimEngine::Sim_Event*)
 	{
 		//if (Simulator->Time() >= 243230814) {
@@ -345,8 +349,8 @@ namespace Host_Components
 
 			return;
 		}
-		// *		
-extern Host_Components::IO_Flow_Base* global_io_flow_base;
+		// *
+		extern Host_Components::IO_Flow_Base* global_io_flow_base;
 		Host_IO_Request* request = Generate_next_request();
 		if (request != NULL) {
 			//* hoonhwi
@@ -362,17 +366,23 @@ extern Host_Components::IO_Flow_Base* global_io_flow_base;
 					global_io_flow_base->STAT_serviced_read_request_count++;
 					global_io_flow_base->STAT_transferred_bytes_read += request->LBA_count * SECTOR_SIZE_IN_BYTE;
 					buffer_cache_read_time += buffer_cache_time_coeff;
+					sim_time_type firetime{ 0 };
+					firetime = (request->Arrival_time < Simulator->Time()) ? Simulator->Time() : request->Arrival_time;
+					Simulator->Register_sim_event(firetime, host_buffer, 0, 0);
 				}
 				else
 				{
+					//ofrepeated_access << request->Start_LBA << " " << endl;
 					// PRINT_MESSAGE("page fault Address: " << request->Start_LBA);
 					if(PAGE_TABLE_ON)
 					{
 						global_io_flow_base->STAT_PAGE_CACHE_EVICT += pagetable.map_pageTable(request->Start_LBA, request->Start_LBA); // add to pagetable, address need to be fixed
+						global_io_flow_base->STAT_PAGE_CACHE_MAP++;
 					}
 
 					//Submit_io_request(request);
 					cxl_pcie->requests_queue.push_back(request);
+
 					sim_time_type firetime{ 0 };
 					firetime = (request->Arrival_time < Simulator->Time()) ? Simulator->Time() : request->Arrival_time;
 					Simulator->Register_sim_event(firetime, cxl_pcie, 0, 0);
@@ -429,7 +439,6 @@ extern Host_Components::IO_Flow_Base* global_io_flow_base;
 								cxl_pcie->write_buffer_cnt--;
 							}
 							// PRINT_MESSAGE("sync complete: " << cxl_pcie->write_buffer_cnt);
-							testbit = 1;
 						}
 					}
 					else
@@ -472,7 +481,7 @@ extern Host_Components::IO_Flow_Base* global_io_flow_base;
 			firetime = (std::strtoll(current_trace_line[ASCIITraceTimeColumn].c_str(), &pEnd, 10) < Simulator->Time()) ? Simulator->Time() : std::strtoll(current_trace_line[ASCIITraceTimeColumn].c_str(), &pEnd, 10);
 			//Simulator->Register_sim_event(time_offset + std::strtoll(current_trace_line[ASCIITraceTimeColumn].c_str(), &pEnd, 10), this);
 			Simulator->Register_sim_event(time_offset + firetime, this);			
-#endif
+#endif		
 		}
 	}
 

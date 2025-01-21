@@ -12,11 +12,16 @@
 
 using namespace std;
 
+// * hoonhwi
+size_t DIMM_MEMORY_SIZE_KB;
+size_t MAX_PAGE_TABLE_ENTRY_SIZE;
+bool PAGE_TABLE_ON;
+bool SHADOW_MAPPING;
+// *
 
 void command_line_args(char* argv[], string& input_file_path, string& workload_file_path)
 {
-
-	for (int arg_cntr = 1; arg_cntr < 5; arg_cntr++) {
+	for (int arg_cntr = 1; arg_cntr < 9; arg_cntr++) {
 		string arg = argv[arg_cntr];
 
 		char file_path_switch[] = "-i";
@@ -32,6 +37,27 @@ void command_line_args(char* argv[], string& input_file_path, string& workload_f
 			//cout << workload_file_path << endl;
 			continue;
 		}
+
+		// *hoonhwi
+		char host_cxl_buffer_size[] = "-c";
+		if (arg.compare(0, strlen(host_cxl_buffer_size), host_cxl_buffer_size) == 0) {
+			DIMM_MEMORY_SIZE_KB = std::atoi(argv[++arg_cntr]);
+			//cout << DIMM_MEMORY_SIZE_KB << endl;
+			MAX_PAGE_TABLE_ENTRY_SIZE = DIMM_MEMORY_SIZE_KB * KB / PAGE_SIZE;
+			if(MAX_PAGE_TABLE_ENTRY_SIZE == 0) PAGE_TABLE_ON = false;
+			else PAGE_TABLE_ON = true;
+			continue;
+		}	
+
+		char instorage_mapping[] = "-s";
+		if (arg.compare(0, strlen(instorage_mapping), instorage_mapping) == 0) {
+			int temp_val = std::atoi(argv[++arg_cntr]);
+			if(temp_val == 0) SHADOW_MAPPING = false;
+			else SHADOW_MAPPING = true;
+			//cout << SHADOW_MAPPING << endl;
+			continue;
+		}			
+		// *
 	}
 }
 
@@ -260,11 +286,11 @@ void print_help()
 int main(int argc, char* argv[])
 {
 	string ssd_config_file_path, workload_defs_file_path;
-	if (argc != 5) {
-		// MQSim expects 2 arguments: 1) the path to the SSD configuration definition file, and 2) the path to the workload definition file
-		print_help();
-		return 1;
-	}
+	// if (argc != 5) {
+	 	// MQSim expects 2 arguments: 1) the path to the SSD configuration definition file, and 2) the path to the workload definition file
+	// 	print_help();
+	// 	return 1;
+	// }
 
 	command_line_args(argv, ssd_config_file_path, workload_defs_file_path);
 
@@ -287,12 +313,10 @@ int main(int argc, char* argv[])
 		for (auto io_flow_def = (*io_scen)->begin(); io_flow_def != (*io_scen)->end(); io_flow_def++) {
 			exec_params->Host_Configuration.IO_Flow_Definitions.push_back(*io_flow_def);
 		}
-
 		SSD_Device ssd(&exec_params->SSD_Device_Configuration, &exec_params->Host_Configuration.IO_Flow_Definitions);//Create SSD_Device based on the specified parameters
 		exec_params->Host_Configuration.Input_file_path = workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of("."));//Create Host_System based on the specified parameters
 		Host_System host(&exec_params->Host_Configuration, exec_params->SSD_Device_Configuration.Enabled_Preconditioning, ssd.Host_interface);
 		host.Attach_ssd_device(&ssd);
-
 		Simulator->Start_simulation();
 
 		time_t end_time = time(0);

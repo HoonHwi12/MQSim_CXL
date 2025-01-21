@@ -9,7 +9,7 @@ namespace SSD_Components
 		STAT_sum_of_read_transactions_execution_time(0), STAT_sum_of_read_transactions_transfer_time(0), STAT_sum_of_read_transactions_waiting_time(0),
 		STAT_sum_of_write_transactions_execution_time(0), STAT_sum_of_write_transactions_transfer_time(0), STAT_sum_of_write_transactions_waiting_time(0),
 		// *hoonhwi
-		STAT_SYNC_READ(0), STAT_SYNC_WRITE(0), STAT_SYNC_WRITE_BYTE_SAVED(0), STAT_SYNC_READ_BYTE_SAVED(0)
+		STAT_SYNC_READ(0), STAT_SYNC_WRITE(0)
 		// *
 	{}
 	
@@ -136,10 +136,10 @@ namespace SSD_Components
 				if(transaction->STAT_sync == true)
 				{
 					this->input_streams[transaction->Stream_id]->STAT_SYNC_READ++;
-					this->input_streams[transaction->Stream_id]->STAT_SYNC_READ_BYTE_SAVED += transaction->UserIORequest->Size_in_byte;
 
 					transaction->STAT_execution_time = 0;
 					transaction->STAT_transfer_time = 0;
+					transaction->Issue_time = Simulator->Time();
 				}
 				// *
 				this->input_streams[transaction->Stream_id]->STAT_sum_of_read_transactions_execution_time += transaction->STAT_execution_time;
@@ -151,10 +151,10 @@ namespace SSD_Components
 				if(transaction->STAT_sync == true)
 				{
 					this->input_streams[transaction->Stream_id]->STAT_SYNC_WRITE++;
-					this->input_streams[transaction->Stream_id]->STAT_SYNC_WRITE_BYTE_SAVED += transaction->UserIORequest->Size_in_byte;
 
 					transaction->STAT_execution_time = 0;
 					transaction->STAT_transfer_time = 0;
+					transaction->Issue_time = Simulator->Time();
 				}
 				// *
 				this->input_streams[transaction->Stream_id]->STAT_sum_of_write_transactions_execution_time += transaction->STAT_execution_time;
@@ -166,6 +166,7 @@ namespace SSD_Components
 		}
 	}
 
+	// * hoonhwi
 	uint32_t Input_Stream_Manager_Base::Get_stat_sync_write(stream_id_type stream_id)//in microseconds
 	{
 		return input_streams[stream_id]->STAT_SYNC_WRITE;
@@ -174,14 +175,15 @@ namespace SSD_Components
 	{
 		return input_streams[stream_id]->STAT_SYNC_READ;
 	}
-	uint32_t Input_Stream_Manager_Base::Get_stat_sync_read_byte(stream_id_type stream_id)//in microseconds
+	uint32_t Input_Stream_Manager_Base::Get_number_of_read_transactions(stream_id_type stream_id)//in microseconds
 	{
-		return input_streams[stream_id]->STAT_SYNC_READ_BYTE_SAVED;
+		return input_streams[stream_id]->STAT_number_of_read_transactions;
 	}
-	uint32_t Input_Stream_Manager_Base::Get_stat_sync_write_byte(stream_id_type stream_id)//in microseconds
+	uint32_t Input_Stream_Manager_Base::Get_number_of_write_transactions(stream_id_type stream_id)//in microseconds
 	{
-		return input_streams[stream_id]->STAT_SYNC_WRITE_BYTE_SAVED;
+		return input_streams[stream_id]->STAT_number_of_write_transactions;
 	}
+	// *
 
 	double Input_Stream_Manager_Base::Get_average_read_transaction_turnaround_time(stream_id_type stream_id)//in microseconds
 	{

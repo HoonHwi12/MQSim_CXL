@@ -110,7 +110,7 @@ namespace SSD_Components {
 		case CXL_DRAM_EVENTS::CACHE_MISS:
 			number_of_accesses++;
 			flash_read_count++;
-			//cache_miss_count++;
+			cache_miss_count++;
 			//ofi2 << current_access->initiate_time << " " << Simulator->Time() << endl;
 			//hi->Update_CXL_DRAM_state_when_miss_data_ready(current_access->rw, current_access->lba);
 			//outputf.of << "Finished_time " << Simulator->Time()  << " Starting_time " << current_access->initiate_time << " Cache_miss_at " << current_access->lba << std::endl;
@@ -181,7 +181,6 @@ namespace SSD_Components {
 
 		//ofi << totalcount << endl;
 		//number_of_accesses++;
-
 		uint64_t total_request = number_of_accesses + Host_Components::global_io_flow_base->STAT_PAGE_CACHE_HIT;
 		float current_progress{ static_cast<float>(total_request) / static_cast<float>(total_number_of_requests) };
 		if (current_progress<1 && current_progress * 100 - perc > 1) {
@@ -196,7 +195,7 @@ namespace SSD_Components {
 				std::cout << " ";
 			}
 
-			std::cout << "] " << perc << "%   Cache Hit Count: " << cache_hit_count << "   Prefetch amount: "<< prefetch_amount << "   total_request: " << total_request << "  total_number_of_requests: " << total_number_of_requests << endl;
+			std::cout << "] " << perc << "%   Cache Hit Count: " << cache_hit_count << "   Cache Miss Count: " << cache_miss_count << "   Prefetch amount: "<< prefetch_amount << "   total_request: " << total_request << "  total_number_of_requests: " << total_number_of_requests << endl;
 		}
 		if (total_request >= (total_number_of_requests - MAX_BUFFER_CACHE_SIZE) && !results_printed) {
 			results_printed = 1;
@@ -210,6 +209,8 @@ namespace SSD_Components {
 			of_overall<< "Cache Hit Count: " << cache_hit_count << "   Prefetch amount: " << prefetch_amount << std::endl;
 			std::cout << "Hit under miss count: " << cache_hum_count << endl;
 			of_overall << "Hit under miss count: " << cache_hum_count << endl;
+			std::cout << "Cache miss count: " << cache_miss_count << endl;
+			of_overall << "Cache miss count: " << cache_miss_count << endl;
 			std::cout << "Flash Read Count: " << flash_read_count << endl;
 			of_overall << "Flash Read Count: " << flash_read_count << endl;
 			if (prefetch_amount > 0) {

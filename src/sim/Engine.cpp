@@ -86,6 +86,8 @@ namespace MQSimEngine
 		while (true) {
 			if (_EventList->Count == 0 || stop) {
 				//std::cout << " check" << std::endl;
+				if(_EventList->Count == 0) {PRINT_MESSAGE("_EventList->Count == 0");}
+				else {PRINT_MESSAGE("stop signal detected");}
 				break;
 			}
 

@@ -98,8 +98,11 @@ namespace Host_Components
 		//Variables used to collect statistics
 		uint64_t STAT_BUFFER_CACHE_MAP;
 		uint64_t STAT_BUFFER_CACHE_HIT;
+		uint64_t STAT_PAGE_CACHE_MAP;
 		uint64_t STAT_PAGE_CACHE_HIT;
 		uint64_t STAT_PAGE_CACHE_EVICT;
+		sim_time_type STAT_transferred_read_time_saved;
+		sim_time_type STAT_transferred_write_time_saved;
 
 		unsigned int STAT_generated_request_count_before_PRECOND; //DATE22
 		unsigned int STAT_generated_request_count_before_GC; //DATE22

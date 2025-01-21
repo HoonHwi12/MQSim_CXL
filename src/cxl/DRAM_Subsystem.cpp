@@ -475,12 +475,10 @@ namespace SSD_Components {
 
 	void dram_subsystem::process_cache_hit(bool rw, uint64_t lba, bool& falsehit) {
 
-
 		if (!this->isCacheHit(lba)) {
 			falsehit = 1;
 			return;
 		}
-
 
 		uint64_t cache_page_addr{ 0 };
 
@@ -735,7 +733,14 @@ namespace SSD_Components {
 		if (temp_dram_mapping->count(lba) > 0) {
 			bool falsehit{ 0 };
 			process_cache_hit(rw, lba, falsehit);
-			return;
+			if(falsehit)
+			{
+				PRINT_MESSAGE("falsehit");
+			}
+			else
+			{
+				return;
+			}
 		}
 
 

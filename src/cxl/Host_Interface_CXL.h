@@ -98,7 +98,10 @@ namespace SSD_Components
 		//no mshr
 		map<uint64_t, list<no_mshr_record_node>> no_mshr_requests_record;
 		list<uint64_t> no_mshr_not_yet_serviced_lba;
-		uint64_t repeated_flash_access_count{ 0 };
+		uint64_t repeated_flash_read_access_count{ 0 };
+		uint64_t repeated_flash_write_access_count{ 0 };
+		uint64_t not_repeated_flash_read_access_count{ 0 };
+		uint64_t not_repeated_flash_write_access_count{ 0 };
 
 		
 	private:
@@ -224,7 +227,7 @@ namespace SSD_Components
 
 		void Update_CXL_DRAM_state(bool rw, uint64_t lba, bool& falsehit){
 			this->cxl_man->dram->process_cache_hit(rw, lba, falsehit);
-			if (falsehit) this->cxl_man->falsehitcount++;
+			//if (falsehit) this->cxl_man->falsehitcount++;
 		}
 		void Update_CXL_DRAM_state_when_miss_data_ready(bool rw, uint64_t lba, bool serviced_before, bool& completed_removed_from_mshr);
 		void process_CXL_prefetch_requests(list<uint64_t> prefetchlba);

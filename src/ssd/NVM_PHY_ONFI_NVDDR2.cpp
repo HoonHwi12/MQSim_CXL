@@ -139,7 +139,8 @@ namespace SSD_Components {
 		/*If this is not a die-interleaved command execution, and the channel is already busy,
 		* then something illegarl is happening*/
 		if (target_channel->GetStatus() == BusChannelStatus::BUSY && chipBKE->OngoingDieCMDTransfers.size() == 0) {
-			PRINT_ERROR("Bus " << target_channel->ChannelID << ": starting communication on a busy flash channel!");
+			// * hoonhwi not err
+			//PRINT_ERROR("Bus " << target_channel->ChannelID << ": starting communication on a busy flash channel!");
 		}
 
 		sim_time_type suspendTime = 0;
@@ -458,10 +459,11 @@ namespace SSD_Components {
 					targetChannel->SetStatus(BusChannelStatus::IDLE, targetChip);
 				}
 				break;
-			case NVDDR2_SimEventType::READ_DATA_TRANSFERRED:
+			case NVDDR2_SimEventType::READ_DATA_TRANSFERRED:				
 				//DEBUG2("Chip " << targetChip->ChannelID << ", " << targetChip->ChipID << ", " << dieBKE->ActiveTransactions.front()->Address.DieID << ": READ_DATA_TRANSFERRED ")
 				targetChip->EndDataOutXfer(dieBKE->ActiveCommand);
 				copy_read_data_to_transaction((NVM_Transaction_Flash_RD*)dieBKE->ActiveTransfer, dieBKE->ActiveCommand);
+				
 				/*
 				printf("[DEBUG GC] LPA (pri-pg): %llu\n", (NVM_Transaction_Flash_RD*)dieBKE->ActiveTransfer->LPA);
 				if (((NVM_Transaction_Flash_RD*)dieBKE->ActiveTransfer)->RelatedRead_SUB.size() != 0) {

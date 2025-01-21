@@ -5,8 +5,8 @@
 #include "IO_Flow_Base.h"
 // *
 
-ofstream ofsus_mshr { "./Results/device_stall_time_mshr.txt" };
-ofstream ofsus_flash{ "./Results/device_stall_time_flash.txt" };
+//ofstream ofsus_mshr { "./Results/device_stall_time_mshr.txt" };
+//ofstream ofsus_flash{ "./Results/device_stall_time_flash.txt" };
 //ofstream ofsus_dram{ "./Results/device_stall_time_dram.txt" };
 //ofstream ofsus_dram{ "device_suspend_time_dram.txt" };
 
@@ -150,7 +150,7 @@ namespace Host_Components {
 			Simulator->Register_sim_event(Simulator->Time(), this, 0, 0);
 
 		}
-		ofsus_mshr << SUS_START_TIME_MSHR << " " << Simulator->Time() << endl;
+		//ofsus_mshr << SUS_START_TIME_MSHR << " " << Simulator->Time() << endl;
 	}
 
 	void CXL_PCIe::mark_dram_full() {
@@ -165,7 +165,7 @@ namespace Host_Components {
 			Simulator->Register_sim_event(Simulator->Time(), this, 0, 0);
 
 		}
-		//ofsus_dram << SUS_START_TIME_DRAM << " " << Simulator->Time() << endl;
+		// << SUS_START_TIME_DRAM << " " << Simulator->Time() << endl;
 
 	}
 
@@ -181,7 +181,7 @@ namespace Host_Components {
 			Simulator->Register_sim_event(Simulator->Time(), this, 0, 0);
 
 		}
-		ofsus_flash << SUS_START_TIME_FLASH << " " << Simulator->Time() << endl;
+		//ofsus_flash << SUS_START_TIME_FLASH << " " << Simulator->Time() << endl;
 	}
 
 }

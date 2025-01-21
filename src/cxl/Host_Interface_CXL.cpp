@@ -9,10 +9,10 @@
 //ofstream ofFlush{ "Flush_initiation_time.txt" };
 //ofstream ofrequest{ "Request_recieved.txt" };
 
-ofstream oflatep{ "./Results/late_prefetch_lateness.txt" };
-ofstream oflat_no_cache{ "./Results/latency_results_no_cache.txt" };
+//ofstream oflatep{ "./Results/late_prefetch_lateness.txt" };
+//ofstream oflat_no_cache{ "./Results/latency_results_no_cache.txt" };
 //ofstream ofprefetch_chance{ "./Results/prefetch_potential.txt" };
-ofstream ofrepeated_access{ "./Results/repeated_access.txt" };
+//ofstream ofrepeated_access{ "./Results/repeated_access.txt" };
 ofstream of_delta{ "Prediction_delta.txt" };
 
 class prefetch_info_node {
@@ -271,8 +271,9 @@ namespace SSD_Components
 
 		Submission_Queue_Entry* sqe = (Submission_Queue_Entry*)payload;
 		sqe->Command_specific[2] = ((uint32_t)((uint16_t)cxl_config_para.num_sec)) & (uint32_t)(0x0000ffff);
-		LHA_type memory_addr{ (((LHA_type)sqe->Command_specific[1]) << 31 | (LHA_type)sqe->Command_specific[0]) };
-		
+		//LHA_type memory_addr{ (((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0]) };
+		LHA_type memory_addr{ (((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0]) };
+
 		//No translate
 		//LHA_type lba{ memory_addr };
 		//translate 
@@ -290,6 +291,8 @@ namespace SSD_Components
 		sqe->Command_specific[0] = (uint32_t)lsa;
 		sqe->Command_specific[1] = (uint32_t)(lsa >> 32);
 
+		LHA_type test{ (((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0]) };
+
 		if (!cxl_config_para.has_cache) {
 			//ofprefetch_chance << flash_back_end_queue_size - flash_back_end_access_count - 1 << " cm" << endl;
 			return CACHE_MISS;
@@ -305,11 +308,16 @@ namespace SSD_Components
 
 			bool falsehit{ 0 };
 			if(!cxl_config_para.dram_mode)((Host_Interface_CXL*)hi)->Update_CXL_DRAM_state(rw, lba, falsehit);
-			if (falsehit) falsehitcount++;
+			if (falsehit)
+			{
+				falsehitcount++;
+				cache_hit_count--;
+				cache_miss_count++;
+			}
 
 			//dram->process_cache_hit(rw, lba);
 
-			if(!is_pref_req)cache_hit_count++;
+			//if(!is_pref_req)cache_hit_count++;
 
 			if (!is_pref_req && prefetched_lba->count(lba)) {
 				prefetch_hit_count++;
@@ -342,15 +350,17 @@ namespace SSD_Components
 
 				if (no_mshr_requests_record.count(lba)) {
 					no_mshr_requests_record[lba].push_back(n);
-					repeated_flash_access_count++;
-					ofrepeated_access << lba << " " << 1 << endl;
+					if(n.rw == true) repeated_flash_read_access_count++;
+					else repeated_flash_write_access_count++;
+					//ofrepeated_access << lba << " " << 1 << " " << n.rw << " " << memory_addr << endl;
 				}
 				else {
 					list<no_mshr_record_node> l;
 					l.push_back(n);
 					no_mshr_requests_record.emplace(lba, l);
-					ofrepeated_access << lba << " " << 0 << endl;
-
+					if(n.rw == true) not_repeated_flash_read_access_count++;
+					else not_repeated_flash_write_access_count++;
+					//ofrepeated_access << lba << " " << 0 << " " << n.rw << " " << memory_addr << endl;
 				}
 
 				cache_miss = CACHE_MISS;
@@ -454,7 +464,7 @@ namespace SSD_Components
 
 		Submission_Queue_Entry* sqe = (Submission_Queue_Entry*)request->IO_command_info;
 
-		LHA_type lba{ (((LHA_type)sqe->Command_specific[1]) << 31 | (LHA_type)sqe->Command_specific[0]) / sqe->Command_specific[2] };
+		LHA_type lba{ (((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0]) / sqe->Command_specific[2] };
 
 
 		if (!cxl_config_para.has_cache) {
@@ -468,7 +478,7 @@ namespace SSD_Components
 			}
 			flash_back_end_access_count--;
 
-			oflat_no_cache << Simulator->Time() - request->STAT_InitiationTime << endl;
+			//oflat_no_cache << Simulator->Time() - request->STAT_InitiationTime << endl;
 
 
 			total_number_of_accesses++;
@@ -825,7 +835,7 @@ namespace SSD_Components
 #endif
 			if (user_request->Type == UserRequestType::READ) {
 				NVM_Transaction_Flash_RD* transaction = new NVM_Transaction_Flash_RD(Transaction_Source_Type::USERIO, user_request->Stream_id,
-					transaction_size * SECTOR_SIZE_IN_BYTE, lpa, NO_PPA, user_request, 0, access_status_bitmap, CurrentTimeStamp);
+				transaction_size * SECTOR_SIZE_IN_BYTE, lpa, NO_PPA, user_request, 0, access_status_bitmap, CurrentTimeStamp);
 				// * hoon: transaction push back here
 				// * hoon: generate wrsync
 				if(SHADOW_MAPPING)
@@ -965,7 +975,7 @@ namespace SSD_Components
 			{
 			case NVME_READ_OPCODE:
 				new_reqeust->Type = UserRequestType::READ;
-				new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 31 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
+				new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
 				new_reqeust->SizeInSectors = sqe->Command_specific[2] & (LHA_type)(0x0000ffff);
 				new_reqeust->Size_in_byte = new_reqeust->SizeInSectors * SECTOR_SIZE_IN_BYTE;
 				hi->cxl_man->flash_read_count++;
@@ -973,7 +983,7 @@ namespace SSD_Components
 				break;
 			case NVME_WRITE_OPCODE:
 				new_reqeust->Type = UserRequestType::WRITE;
-				new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 31 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
+				new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
 				//cout << new_reqeust->Start_LBA << endl;
 				new_reqeust->SizeInSectors = sqe->Command_specific[2] & (LHA_type)(0x0000ffff);
 				new_reqeust->Size_in_byte = new_reqeust->SizeInSectors * SECTOR_SIZE_IN_BYTE;
@@ -1137,6 +1147,7 @@ namespace SSD_Components
 					sqe->Command_specific[0] = (uint32_t)lsa;
 					sqe->Command_specific[1] = (uint32_t)(lsa >> 32);
 					sqe->Command_specific[2] = ((uint32_t)((uint16_t)cxl_man->cxl_config_para.num_sec)) & (uint32_t)(0x0000ffff);
+					LHA_type test = ((uint64_t)sqe->Command_specific[1] << 32) | sqe->Command_specific[0];
 
 					sqe->PRP_entry_1 = (DATA_MEMORY_REGION);//Dummy addresses, just to emulate data read/write access
 					sqe->PRP_entry_2 = (DATA_MEMORY_REGION + 0x1000);//Dummy addresses
@@ -1223,20 +1234,24 @@ namespace SSD_Components
 
 			attr = "Num Sync Write Command";
 			val = std::to_string(input_stream_manager->Get_stat_sync_write(stream_id));
-			xmlwriter.Write_attribute_string(attr, val);
+			xmlwriter.Write_attribute_string(attr, val);		
 
-			attr = "Byte saved through read sync";
-			val = std::to_string(input_stream_manager->Get_stat_sync_read_byte(stream_id));
-			xmlwriter.Write_attribute_string(attr, val);
+			attr = "Num Sync Write Command";
+			val = std::to_string(input_stream_manager->Get_stat_sync_write(stream_id));
+			xmlwriter.Write_attribute_string(attr, val);		
 
-			attr = "Byte saved through write sync";
-			val = std::to_string(input_stream_manager->Get_stat_sync_write_byte(stream_id));
-			xmlwriter.Write_attribute_string(attr, val);
-			// *
+			attr = "Total Read Transaction";
+			val = std::to_string(input_stream_manager->Get_number_of_read_transactions(stream_id));
+			xmlwriter.Write_attribute_string(attr, val);	
 
+			attr = "Total Write Transaction";
+			val = std::to_string(input_stream_manager->Get_number_of_write_transactions(stream_id));
+			xmlwriter.Write_attribute_string(attr, val);							
+// *
 			attr = "Average_Read_Transaction_Turnaround_Time";
 			val = std::to_string(input_stream_manager->Get_average_read_transaction_turnaround_time(stream_id));
 			xmlwriter.Write_attribute_string(attr, val);
+			
 
 			attr = "Average_Read_Transaction_Execution_Time";
 			val = std::to_string(input_stream_manager->Get_average_read_transaction_execution_time(stream_id));
@@ -1279,8 +1294,14 @@ namespace SSD_Components
 
 		std::cout << "Request ends at timestamp: " << static_cast<float>(Simulator->Time()) / 1000000000 << " s" << endl;
 		of_overall << "Request ends at timestamp: " << static_cast<float>(Simulator->Time()) / 1000000000 << " s" << endl;
-		std::cout << "Repeated flash access count: " << cxl_man->repeated_flash_access_count << endl;
-		of_overall << "Repeated flash access count: " << cxl_man->repeated_flash_access_count << endl;
+		std::cout << "Repeated flash read access count: " << cxl_man->repeated_flash_read_access_count << endl;
+		of_overall << "Repeated flash read access count: " << cxl_man->repeated_flash_read_access_count << endl;
+		std::cout << "Repeated flash write access count: " << cxl_man->repeated_flash_write_access_count << endl;
+		of_overall << "Repeated flash write access count: " << cxl_man->repeated_flash_write_access_count << endl;
+		std::cout << "not Repeated flash read access count: " << cxl_man->not_repeated_flash_read_access_count << endl;
+		of_overall << "not Repeated flash read access count: " << cxl_man->not_repeated_flash_read_access_count << endl;
+		std::cout << "not Repeated flash write access count: " << cxl_man->not_repeated_flash_write_access_count << endl;
+		of_overall << "not Repeated flash write access count: " << cxl_man->not_repeated_flash_write_access_count << endl;
 		if (PREFETCH_INFO_MAP.size() == 0) return;
 
 		uint64_t accurate_prefetch{ 0 };
@@ -1368,7 +1389,7 @@ namespace SSD_Components
 			else {
 				if (this->cxl_man->in_progress_prefetch_lba->count(lba)) {
 					evt = CXL_DRAM_EVENTS::SLOW_PREFETCH;
-					oflatep << first_entry->time << " " << Simulator->Time() << endl;
+					//oflatep << first_entry->time << " " << Simulator->Time() << endl;
 					if (PREFETCH_INFO_MAP.count(lba) == 0) {
 						prefetch_info_node n;
 						n.late = 1;
@@ -1446,6 +1467,7 @@ namespace SSD_Components
 				((Request_Fetch_Unit_CXL*)(this->request_fetch_unit))->Fetch_next_request(0);
 // *hoon: not use
 				((Request_Fetch_Unit_CXL*)(this->request_fetch_unit))->Process_pcie_read_message(0, sqe, sizeof(Submission_Queue_Entry));
+				PRINT_MESSAGE("update cxl dram end");
 
 			}
 
@@ -1460,7 +1482,12 @@ namespace SSD_Components
 
 			bool falsehit{ 0 };
 			Update_CXL_DRAM_state(1, lba, falsehit);
-			if (falsehit) cxl_man->falsehitcount++;
+			if (falsehit)
+			{
+				cxl_man->falsehitcount++;
+				cxl_dram->cache_hum_count--;
+				cxl_man->cache_miss_count++;
+			}
 
 			if (cxl_man->prefetched_lba->count(lba)) {
 				PREFETCH_INFO_MAP[lba].hit_count++;
@@ -1520,6 +1547,7 @@ namespace SSD_Components
 			request_fetch_unit->Fetch_next_request(0);
 // *hoon: not use
 			request_fetch_unit->Process_pcie_read_message(0, sqe, sizeof(Submission_Queue_Entry));
+			PRINT_MESSAGE("Process_cxl prefetch end");
 
 		}
 

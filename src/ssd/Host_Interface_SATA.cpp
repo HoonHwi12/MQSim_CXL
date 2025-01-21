@@ -207,13 +207,13 @@ namespace SSD_Components
 				{
 					case SATA_READ_OPCODE:
 						new_reqeust->Type = UserRequestType::READ;
-						new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 31 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
+						new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
 						new_reqeust->SizeInSectors = sqe->Command_specific[2] & (LHA_type)(0x0000ffff);
 						new_reqeust->Size_in_byte = new_reqeust->SizeInSectors * SECTOR_SIZE_IN_BYTE;
 						break;
 					case SATA_WRITE_OPCODE:
 						new_reqeust->Type = UserRequestType::WRITE;
-						new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 31 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
+						new_reqeust->Start_LBA = ((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0];//Command Dword 10 and Command Dword 11
 						new_reqeust->SizeInSectors = sqe->Command_specific[2] & (LHA_type)(0x0000ffff);
 						new_reqeust->Size_in_byte = new_reqeust->SizeInSectors * SECTOR_SIZE_IN_BYTE;
 						break;

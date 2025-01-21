@@ -656,7 +656,6 @@ namespace SSD_Components
 		}
 
 
-
 		if (transactionList.size() > 0) {
 			int issue_count = 0;
 			ftl->TSU->Prepare_for_transaction_submit();
@@ -675,8 +674,7 @@ namespace SSD_Components
 						}
 					}
 				}
-
-				if (is_write == true) {					
+				if (is_write == true) {
 					issue_count++;
 					if (issue_count == count) {
 						Stats::Host_write_count += issue_count;
@@ -688,9 +686,9 @@ namespace SSD_Components
 
 			ftl->TSU->Schedule();
 		}
-
 		Start_servicing_writes_for_overfull();
-
+		
+		
 		return count;
 	}
 
@@ -809,9 +807,8 @@ namespace SSD_Components
 			}
 			else
 			{
-				if(translate_sync_lpa_to_ppa(stream_id, transaction)) {
-					return true;
-				}
+				translate_sync_lpa_to_ppa(stream_id, transaction);
+				return true;
 			}
 			// *
 		} else {//Limited CMT
@@ -830,13 +827,23 @@ namespace SSD_Components
 					Stats::writeTR_CMT_miss++;
 					Stats::writeTR_CMT_miss_per_stream[stream_id]++;
 				}
-				if (translate_lpa_to_ppa(stream_id, transaction)) {
-					return true;
-				} else {
-					mange_unsuccessful_translation(transaction);
-					PRINT_ERROR("NNNOOOOOOOOOOOOOOOO");
-					return false;
+				// * hoonhwi
+				if(!wrsync)
+				{
+					if (translate_lpa_to_ppa(stream_id, transaction)) {
+						return true;
+					} else {
+						mange_unsuccessful_translation(transaction);
+						return false;
+					}
 				}
+				else
+				{
+					if(translate_sync_lpa_to_ppa(stream_id, transaction)) {
+						return true;
+					}					
+				}
+				// *
 			} else {
 				if (transaction->Type == Transaction_Type::READ) {
 					Stats::total_readTR_CMT_queries++;
@@ -920,55 +927,57 @@ namespace SSD_Components
 		PPA_type ppa = domains[streamID]->Get_ppa(ideal_mapping_table, streamID, transaction->LPA);
 
 		// * hoon: startLBA,ppa -> Data,ppa
-		if (transaction->Type == Transaction_Type::READ) {
-			//if (ppa == NO_PPA) std::cout << "lpa does not exists in table" << std::endl;
+		if (transaction->Type == Transaction_Type::READ) {		
 			if (ppa == NO_PPA) {
-				//PRINT_MESSAGE("read no ppa");
 				ppa = online_create_entry_for_reads(transaction->LPA, streamID, transaction->Address, ((NVM_Transaction_Flash_RD*)transaction)->read_sectors_bitmap);
 			}
 			transaction->PPA = ppa;
 			Convert_ppa_to_address(transaction->PPA, transaction->Address);
-			block_manager->Read_transaction_issued(transaction->Address);
-			
-			// hoon: need to be fixed later
-			//domains[streamID]->Update_mapping_info(ideal_mapping_table, streamID, transaction->LPA, transaction->PPA, transaction->read_sectors_bitmap);
-			transaction->Physical_address_determined = true;
-
+			//block_manager->Read_transaction_issued(transaction->Address);
+			// // * hoonhwi: mapping update
+			cxl_read_mapping(streamID, transaction);
+			// // *
+			transaction->Physical_address_determined = false;
+		
 			return true;
-		} else {//This is a write transaction	
-
-			int bypass_count = -1;
-			do{
-				if (bypass_count >= 0){
-					// program bypass - on...	
-					block_manager->Program_transaction_serviced(transaction->Address);
-				}
+		} else {//This is a write transaction		
+// 			int bypass_count = -1;
+// 			do{
+// 				if (bypass_count >= 0){
+// 					// program bypass - on...	
+// 					block_manager->Program_transaction_serviced(transaction->Address);
+// 				}
 				
-				allocate_plane_for_user_write((NVM_Transaction_Flash_WR*)transaction);
-#ifndef EXECUTION_CONTROL 
-				//there are too few free pages remaining only for GC
-				if (ftl->GC_and_WL_Unit->Stop_servicing_writes(transaction->Address)){
-					return false;
-				}
-#endif
-				(user_Alloc_count[((NVM_Transaction_Flash_WR*)transaction)->Stream_id])++;
+// 				allocate_plane_for_user_write((NVM_Transaction_Flash_WR*)transaction);
+// #ifndef EXECUTION_CONTROL 
+// 				//there are too few free pages remaining only for GC
+// 				if (ftl->GC_and_WL_Unit->Stop_servicing_writes(transaction->Address)){
+// 					return false;
+// 				}
+// #endif
+// 				(user_Alloc_count[((NVM_Transaction_Flash_WR*)transaction)->Stream_id])++;
 
-				allocate_page_in_plane_for_user_write((NVM_Transaction_Flash_WR*)transaction, false);
+// 				allocate_page_in_plane_for_user_write((NVM_Transaction_Flash_WR*)transaction, false);
 
-				bypass_count++;
-			}
-			while (block_manager->Is_page_bypass(transaction->Address));			
-			transaction->Physical_address_determined = true;
+// 				bypass_count++;
+// 			}
+// 			while (block_manager->Is_page_bypass(transaction->Address));
 
-#ifdef EXECUTION_CONTROL 
-			if (bypass_count != 0)
-			{
-				Stats::Relief_page_count += bypass_count;
-				Stats::Interval_Relief_page_count += bypass_count;
-				Stats::Cur_relief_page_count += bypass_count;
-				ftl->GC_and_WL_Unit->Adjust_token(bypass_count);
-			}
-#endif				
+// #ifdef EXECUTION_CONTROL 
+// 			if (bypass_count != 0)
+// 			{
+// 				Stats::Relief_page_count += bypass_count;
+// 				Stats::Interval_Relief_page_count += bypass_count;
+// 				Stats::Cur_relief_page_count += bypass_count;
+// 				ftl->GC_and_WL_Unit->Adjust_token(bypass_count);
+// 			}
+// #endif
+
+			// * hoonhwi: mapping update
+			cxl_write_mapping(streamID, transaction);
+			// *		
+			transaction->Physical_address_determined = false;			
+		
 			return true;
 		}
 	}
@@ -1784,6 +1793,40 @@ namespace SSD_Components
 		domain->Update_mapping_info(ideal_mapping_table, transaction->Stream_id, transaction->LPA, transaction->PPA,
 			((NVM_Transaction_Flash_WR*)transaction)->write_sectors_bitmap | domain->Get_page_status(ideal_mapping_table, transaction->Stream_id, transaction->LPA));
 	}
+
+	// *hoonhwi
+	void Address_Mapping_Unit_Page_Level::cxl_write_mapping(stream_id_type streamID, NVM_Transaction_Flash* transaction)
+	{
+		//*hoon: sqe.PRP is dummy address, use command_specific[0-3]
+		//* destLBA = dest addr / buffer_address = src addr
+		Submission_Queue_Entry* sqe = (Submission_Queue_Entry*)transaction->UserIORequest->IO_command_info;
+		uint64_t logical_destination_address = ((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0];
+		uint64_t destLBA = logical_destination_address / (transaction->UserIORequest->SizeInSectors * 512);
+		uint64_t buffer_address = transaction->LPA;
+
+		AddressMappingDomain* domain = domains[transaction->Stream_id];
+		
+		transaction->PPA = domain->Get_ppa(ideal_mapping_table, transaction->Stream_id, buffer_address);
+		
+		domain->Update_mapping_info(ideal_mapping_table, transaction->Stream_id, destLBA, transaction->PPA,
+		((NVM_Transaction_Flash_WR*)transaction)->write_sectors_bitmap | domain->Get_page_status(ideal_mapping_table, transaction->Stream_id, transaction->LPA));
+	}
+	void Address_Mapping_Unit_Page_Level::cxl_read_mapping(stream_id_type streamID, NVM_Transaction_Flash* transaction)
+	{
+		//*hoon: sqe.PRP is dummy address, use command_specific[0-3]
+		//* srcLBA = src addr / buffer_address = dst addr
+		Submission_Queue_Entry* sqe = (Submission_Queue_Entry*)transaction->UserIORequest->IO_command_info;
+		uint64_t logical_src_address = ((LHA_type)sqe->Command_specific[1]) << 32 | (LHA_type)sqe->Command_specific[0];
+		uint64_t srcLBA = logical_src_address / (transaction->UserIORequest->SizeInSectors * 512);
+		uint64_t buffer_address = transaction->LPA;
+		AddressMappingDomain* domain = domains[transaction->Stream_id];
+		
+		//transaction->PPA = domain->Get_ppa(ideal_mapping_table, transaction->Stream_id, srcLBA);
+		
+		domain->Update_mapping_info(ideal_mapping_table, transaction->Stream_id, buffer_address, transaction->PPA,
+		((NVM_Transaction_Flash_WR*)transaction)->write_sectors_bitmap | domain->Get_page_status(ideal_mapping_table, transaction->Stream_id, transaction->LPA));
+	}	
+	// *
 
 	void Address_Mapping_Unit_Page_Level::allocate_plane_for_translation_write(NVM_Transaction_Flash* transaction)
 	{

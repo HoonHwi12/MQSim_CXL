@@ -91,6 +91,7 @@ namespace Utils
 							}
 
 							if (!(stream_die_ids[stream_id][die_id] < die_no_per_chip)) {
+								PRINT_MESSAGE("stream_die_ids[stream_id][die_id]:"<<stream_die_ids[stream_id][die_id]<<" die_no_per_chip:"<<die_no_per_chip);
 								PRINT_ERROR("Invalid die ID specified for I/O flow " << stream_id);
 							}
 

@@ -9,7 +9,7 @@
 #include "NVM_Transaction.h"
 
 // * hoonhwi; shadow_mapping
-const bool SHADOW_MAPPING = true;
+extern bool SHADOW_MAPPING;
 const uint32_t SHADOW_FREQUENCY = 4;
 // *
 

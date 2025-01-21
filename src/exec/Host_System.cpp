@@ -42,6 +42,10 @@ Host_System::Host_System(Host_Parameter_Set* parameters, bool preconditioning_re
 
 	this->PCIe_switch->cxl_pcie = this->cxl_pcie;
 
+	// *hoonhwi
+	this->host_buffer = new Host_Components::Host_Buffer("Host_Buffer");
+	Simulator->AddObject(this->host_buffer);
+	// *
 
 	//Create IO flows
 	LHA_type address_range_per_flow = ssd_host_interface->Get_max_logical_sector_address() / parameters->IO_Flow_Definitions.size();
@@ -98,7 +102,7 @@ Host_System::Host_System(Host_Parameter_Set* parameters, bool preconditioning_re
 					flow_param->Priority_Class, flow_param->Initial_Occupancy_Percentage / double(100.0),
 					flow_param->File_Path, flow_param->Time_Unit, flow_param->Relay_Count, flow_param->Percentage_To_Be_Executed,
 					ssd_host_interface->GetType(), this->PCIe_root_complex, this->SATA_hba,
-					parameters->Enable_ResponseTime_Logging, parameters->ResponseTime_Logging_Period_Length, parameters->Input_file_path + ".IO_Flow.No_" + std::to_string(flow_id) + ".log", this->cxl_pcie);
+					parameters->Enable_ResponseTime_Logging, parameters->ResponseTime_Logging_Period_Length, parameters->Input_file_path + ".IO_Flow.No_" + std::to_string(flow_id) + ".log", this->cxl_pcie, this->host_buffer);
 
 				this->IO_flows.push_back(io_flow);
 				this->cxl_pcie->Set_io_flow(io_flow);
